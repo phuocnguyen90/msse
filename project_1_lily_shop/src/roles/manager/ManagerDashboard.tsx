@@ -6,6 +6,24 @@ interface ManagerDashboardProps {
   onBack: () => void;
 }
 
+// Component annotations for design choices and traceability:
+//
+// 1. Navigation setup (FR-22) - Manager requires overview + inventory views
+//    Design choice: Sticky navigation with clear view switching for operational efficiency
+//    Traces to FR-22 (Manager Dashboard) and US-11 (Centralized Order Dashboard)
+//
+// 2. Color scheme (NFR-01) - Soft greens and pinks to match floral branding
+//    Design choice: #E57F84 (rose) for primary actions, #F6F7F3 (cream) background
+//    Traces to NFR-01 (Responsiveness) and brand consistency requirements
+//
+// 3. Real-time data (FR-22) - Low stock items highlighted in red
+//    Design choice: Visual warning system with color coding for critical alerts
+//    Traces to FR-22 (Low Stock Alerts) and FR-13 (Low Stock threshold logic)
+//
+// 4. Quick restock functionality (FR-14) - Allow manual inventory adjustment
+//    Design choice: +50 increment buttons for rapid restocking during busy periods
+//    Traces to FR-14 (Manual Adjustments) and operational efficiency needs
+
 type ManagerView = 'overview' | 'inventory';
 
 function ManagerDashboard({ onBack }: ManagerDashboardProps) {
