@@ -9,6 +9,24 @@ interface CustomerExperienceProps {
   onBack: () => void;
 }
 
+// Component annotations for design choices and traceability:
+//
+// 1. Single-page application flow (US-01, US-02) - Seamless customer journey
+//    Design choice: Client-side routing without page reloads for better UX
+//    Traces to US-01 (Browse Visual Gallery) and US-02 (Filter by Occasion & Season)
+//
+// 2. Cart state management (US-06) - Guest checkout option
+//    Design choice: Local cart state allows guest checkout without account creation
+//    Traces to US-06 (Secure Guest Checkout) and conversion optimization
+//
+// 3. Responsive breakpoints (NFR-01) - Mobile-first approach
+//    Design choice: Fluid grid system that adapts from mobile to desktop seamlessly
+//    Traces to NFR-01 (Responsiveness) and mobile commerce trends
+//
+// 4. Performance optimization (NFR-03) - Lazy loading images
+//    Design choice: Images load on scroll to improve initial page load speed
+//    Traces to NFR-03 (Performance) and under 200ms requirement
+
 type CustomerView = 'home' | 'product';
 
 export interface CartItem {

@@ -6,6 +6,24 @@ interface FloristProductionProps {
   onBack: () => void;
 }
 
+// Component annotations for design choices and traceability:
+//
+// 1. Kanban board layout (FR-23) - Visual workflow for florist production
+//    Design choice: Drag-and-drop interface for intuitive status management
+//    Traces to FR-23 (Florist Production View) and US-11 (Production workflow)
+//
+// 2. Recipe display (FR-23) - Show ingredients rather than just product names
+//    Design choice: Expandable ingredients list with quantities for accurate assembly
+//    Traces to FR-23 (Recipe visibility) and inventory accuracy requirements
+//
+// 3. Color-coded priority (FR-25) - Visual status indicators
+//    Design choice: Amber (to-make), Sky (in-progress), Emerald (completed)
+//    Traces to FR-25 (Status Workflow) and operational efficiency
+//
+// 4. Mobile-first design (NFR-01) - Touch-friendly drag interface
+//    Design choice: Large touch targets and intuitive gestures for mobile drivers
+//    Traces to NFR-01 (Mobile optimization) and US-15 (Driver workflow)
+
 type OrderStatus = 'to-make' | 'in-progress' | 'completed';
 
 interface Order {

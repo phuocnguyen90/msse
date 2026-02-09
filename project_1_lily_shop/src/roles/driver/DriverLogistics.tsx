@@ -6,6 +6,24 @@ interface DriverLogisticsProps {
   onBack: () => void;
 }
 
+// Component annotations for design choices and traceability:
+//
+// 1. Privacy protection (FR-24) - Hide financial data from driver view
+//    Design choice: Only show Name, Address, Phone, Instructions - no pricing or totals
+//    Traces to FR-24 (Driver privacy) and US-15 (Security by role)
+//
+// 2. Mobile optimization (NFR-01) - Large touch targets for in-vehicle use
+//    Design choice: 44px minimum touch targets, clear icons for quick recognition
+//    Traces to NFR-01 (Mobile responsiveness) and driver workflow efficiency
+//
+// 3. Real-time status tracking (FR-25) - One-tap delivery confirmation
+//    Design choice: Simple "Delivered" button with immediate status update
+//    Traces to FR-25 (Status workflow) and US-11 (Order management)
+//
+// 4. Zone-based routing (FR-16) - Geographic organization of deliveries
+//    Design choice: Group orders by zone for optimized delivery routes
+//    Traces to FR-16 (Zone pricing) and operational efficiency
+
 interface DeliveryOrder {
   id: string;
   recipient: string;
