@@ -14,6 +14,26 @@
     - **Fix**: Consolidated multiple copy-pasted redundant methods into flexible list comprehensions. E.g., a single method handles filtering based on EV/non-EV flags.
 6. **Unnecessary Abstractions & Broken Inheritance**: `ElectricCar` called `ElectricVehicle.__init__` but failed to formally declare class inheritance `class ElectricCar(ElectricVehicle):`.
     - **Fix**: Corrected the inheritance chain and removed unpythonic Java-style getter methods, relying instead on direct property access.
+7. **Unused Import**: `ParkingManager.py` imported `sys` on line 3, but it was never referenced anywhere in the file.
+    - **Fix**: Removed the unused `import sys` statement to clean up dependencies.
+8. **Unreachable Code**: The `edit()` method in `ParkingManager.py` (lines 107-115) had both `if` and `else` branches returning `True`, making the final `return False` on line 115 unreachable.
+    - **Fix**: Removed the unreachable `return False` statement. The method now returns `True` for both EV and non-EV cases, with the edit operation handled through a single path.
+9. **Implicit `None` Return**: `getEmptyLevel()` (lines 60-62) returned `self.level` only when both counters were zero; otherwise it implicitly returned `None` without an explicit `else` or default return.
+    - **Fix**: Removed the method entirely as it was unused in the GUI and its implicit `None` return was confusing. The `level` property is accessible directly on the `ParkingLot` instance.
+10. **Code Duplication / DRY Violation**: `ElectricVehicle.py` redundantly defined `getMake()`, `getModel()`, `getColor()`, and `getRegNum()` — identical to those in `Vehicle.py` — even though `ElectricVehicle` did not inherit from `Vehicle`.
+    - **Fix**: Made `ElectricVehicle` properly inherit from `Vehicle` and removed the duplicated getter methods, eliminating 16 lines of redundant code.
+11. **Unused Variables**: `command_value` and `level_remove_value` were declared as global `tk.StringVar` instances in `ParkingManager.py` (lines 12 and 27) but never read or bound to any widget.
+    - **Fix**: Removed both unused variables during the extraction of GUI state into the `AppGUI` class.
+12. **Inconsistent "Not Found" Return Types**: `getRegNumFromColor()` returned an empty list `[]` when no matches were found, while `getSlotNumFromRegNum()` returned `-1` for the same semantic condition.
+    - **Fix**: Standardized all query methods to return empty collections (`[]` for lists, `-1` for single-value lookups) consistently. Documented the contract clearly in method names and return types.
+13. **Inconsistent Slot Indexing**: `leave(slotid)` used `slotid - 1` (0-based indexing for the array), but `edit(slotid)` used `slotid` directly (1-based), creating an off-by-one bug risk.
+    - **Fix**: Standardized all public API methods to accept 1-based slot IDs (user-facing) and convert to 0-based indexing internally with clear boundary checks.
+14. **Missing Input Validation**: `leave()` accepted any integer for `slotid` without checking if it was negative or exceeded the array bounds, risking an `IndexError`.
+    - **Fix**: Added explicit bounds checking: `if index < 0: return False` and `if index >= len(self.slots): return False` before array access.
+15. **Hardcoded String Types**: `getType()` methods in `Car`, `Motorcycle`, `ElectricCar`, and `ElectricBike` returned hardcoded strings like `"Car"` and `"Motorcycle"` instead of deriving the type from the class name.
+    - **Fix**: Replaced hardcoded strings with a dynamic `@property def type(self): return self.__class__.__name__` on the base `Vehicle` class, making the type self-describing and eliminating manual string maintenance.
+16. **UI Mutation in Model Layer**: `status()` and `chargeStatus()` in the original `ParkingLot` class called `tfield.insert(tk.INSERT, output)` directly, tightly coupling the business logic to the Tkinter text widget.
+    - **Fix**: Refactored both methods to return the formatted string instead of printing it. The `AppGUI` class now receives the string and decides how to display it, enforcing a clean Model-View separation.
 
 ## Implemented Design Patterns
 

@@ -37,11 +37,19 @@ classDiagram
     class Car {
         +getType()
     }
+    class Truck {
+        +getType()
+    }
     class Motorcycle {
         +getType()
     }
+    class Bus {
+        +getType()
+    }
     Vehicle <|-- Car
+    Vehicle <|-- Truck
     Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
     
     class ElectricVehicle {
         +string regnum
@@ -124,7 +132,9 @@ classDiagram
         +string type
     }
     class Car
+    class Truck
     class Motorcycle
+    class Bus
     class ElectricVehicle {
         +int charge
         +setCharge(charge)
@@ -134,14 +144,18 @@ classDiagram
     class ElectricBike
     
     Vehicle <|-- Car
+    Vehicle <|-- Truck
     Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
     Vehicle <|-- ElectricVehicle
     ElectricVehicle <|-- ElectricCar
     ElectricVehicle <|-- ElectricBike
     
     ParkingLot ..> VehicleFactory : delegates to
     VehicleFactory ..> Car : instantiates
+    VehicleFactory ..> Truck : instantiates
     VehicleFactory ..> Motorcycle : instantiates
+    VehicleFactory ..> Bus : instantiates
     VehicleFactory ..> ElectricCar : instantiates
     VehicleFactory ..> ElectricBike : instantiates
     
