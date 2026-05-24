@@ -5,46 +5,42 @@ Based on the Domain-Driven Design (DDD) bounded contexts, the following is the p
 ## 1. High-Level Architecture Diagram
 
 ```mermaid
-graph TD
-    Client[Mobile App & Web Clients] --> API[API Gateway]
+flowchart TD
+    Client["Mobile App & Web Clients"] --> API["API Gateway"]
 
-    subgraph Edge Network [Local Facility Edge]
-        FS[Facility Edge Service] --> FDB[(Edge PostgreSQL)]
+    subgraph "Edge Network"
+        FS["Facility Edge Service"] --> FDB[("Edge PostgreSQL")]
     end
 
-    subgraph Cloud Infrastructure
-        API --> RS[Reservation Service]
-        API --> EV[EV Charging Service]
-        API --> CS[Customer Identity Service]
-        API --> BS[Billing & Payment Service]
-        
-        %% Service Databases
-        RS --> RDB1[(Redis Cache)]
-        RS --> RDB2[(PostgreSQL)]
-        EV --> EVDB[(MongoDB)]
-        CS --> CSDB[(PostgreSQL)]
-        BS --> BSDB[(CockroachDB)]
-        SS[Settlement Service] --> SSDB[(Snowflake / DW)]
-        
-        %% Synchronous Internal Calls
-        FS -.->|gRPC / REST Auth Check| CS
-        FS -.->|gRPC / REST Fee Calculation| BS
-        
-        %% Asynchronous Event Streaming
-        Kafka{{Apache Kafka Event Broker}}
-        
-        FS -->|Facility.VehicleEntered| Kafka
-        EV -->|Charger.SessionEnded| Kafka
-        BS -->|Billing.PaymentCompleted| Kafka
-        
-        Kafka -->|Listen to Entry| RS
-        Kafka -->|Listen to Session End| BS
-        Kafka -->|Listen to Payments| SS
+    subgraph "Cloud Infrastructure"
+        API --> RS["Reservation Service"]
+        API --> EV["EV Charging Service"]
+        API --> CS["Customer Identity Service"]
+        API --> BS["Billing & Payment Service"]
+
+        RS --> RDB1[("Redis Cache")]
+        RS --> RDB2[("PostgreSQL")]
+        EV --> EVDB[("MongoDB")]
+        CS --> CSDB[("PostgreSQL")]
+        BS --> BSDB[("CockroachDB")]
+        SS["Settlement Service"] --> SSDB[("Snowflake / DW")]
+
+        FS -.->|"gRPC / REST Auth Check"| CS
+        FS -.->|"gRPC / REST Fee Calculation"| BS
+
+        Kafka{{"Apache Kafka Event Broker"}}
+
+        FS -->|"Facility.VehicleEntered"| Kafka
+        EV -->|"Charger.SessionEnded"| Kafka
+        BS -->|"Billing.PaymentCompleted"| Kafka
+
+        Kafka -->|"Listen to Entry"| RS
+        Kafka -->|"Listen to Session End"| BS
+        Kafka -->|"Listen to Payments"| SS
     end
 
-    %% External Systems
-    EV -.->|OCPP Protocol| Hardware[Physical EV Chargers]
-    BS -.->|API| Stripe[Stripe / Payment Gateway]
+    EV -.->|"OCPP Protocol"| Hardware["Physical EV Chargers"]
+    BS -.->|"API"| Stripe["Stripe / Payment Gateway"]
 ```
 
 ---

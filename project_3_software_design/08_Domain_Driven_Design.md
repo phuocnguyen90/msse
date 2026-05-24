@@ -26,30 +26,30 @@ Based on the requirements and the technical interview with Michael, the Technica
 Based on the subdomains, we can define the following **Bounded Contexts** to compartmentalize the system:
 
 ```mermaid
-graph TD
-    subgraph Core Domain
-        APC[Access & Parking Context]
-        EVC[EV Charging Context]
-    end
-    
-    subgraph Supporting Subdomains
-        CAC[Customer & Account Context]
-        RIC[Reservation & Inventory Context]
-        SCC[Settlement & Clearing Context]
-    end
-    
-    subgraph Generic Subdomains
-        BPC[Billing & Payment Context]
+flowchart TD
+    subgraph "Core Domain"
+        APC["Access & Parking Context"]
+        EVC["EV Charging Context"]
     end
 
-    %% Relationships
-    APC -->|Generates Parking Sessions| BPC
-    EVC -->|Generates Charging Sessions| BPC
-    APC <-->|Validates Entry / Updates Capacity| RIC
-    CAC -->|Validates Subscriptions/Accounts| APC
-    CAC -->|Validates Subscriptions/Accounts| EVC
-    BPC -->|Transfers Session Gross/Net Data| SCC
-    RIC -->|Books Time Slots| BPC
+    subgraph "Supporting Subdomains"
+        CAC["Customer & Account Context"]
+        RIC["Reservation & Inventory Context"]
+        SCC["Settlement & Clearing Context"]
+    end
+
+    subgraph "Generic Subdomains"
+        BPC["Billing & Payment Context"]
+    end
+
+    APC -->|"Generates Parking Sessions"| BPC
+    EVC -->|"Generates Charging Sessions"| BPC
+    APC -->|"Validates Entry / Updates Capacity"| RIC
+    RIC -->|"Confirms Capacity Updates"| APC
+    CAC -->|"Validates Subscriptions/Accounts"| APC
+    CAC -->|"Validates Subscriptions/Accounts"| EVC
+    BPC -->|"Transfers Session Gross/Net Data"| SCC
+    RIC -->|"Books Time Slots"| BPC
 ```
 
 > [!IMPORTANT]

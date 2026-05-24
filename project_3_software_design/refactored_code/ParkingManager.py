@@ -1,13 +1,13 @@
-import tkinter as tk
+from datetime import datetime
 from VehicleFactory import VehicleFactory
 
+
 class ParkingLot:
-    """
-    Singleton Pattern: Ensures only one instance of the ParkingLot exists.
-    """
     _instance = None
+    _trace_callback = None
 
     def __new__(cls, *args, **kwargs):
+        cls._trace("Singleton", "__new__() called — checking for existing instance")
         if not cls._instance:
             cls._instance = super(ParkingLot, cls).__new__(cls, *args, **kwargs)
             cls._instance.capacity = 0
@@ -17,261 +17,164 @@ class ParkingLot:
             cls._instance.numOfOccupiedEvSlots = 0
             cls._instance.slots = []
             cls._instance.evSlots = []
+            cls._trace("Singleton", "NEW instance created and initialized")
+        else:
+            cls._trace("Singleton", "EXISTING instance returned (id={})".format(id(cls._instance)))
         return cls._instance
 
+    @classmethod
+    def set_trace_callback(cls, callback):
+        cls._trace_callback = callback
+
+    @classmethod
+    def _trace(cls, component, message):
+        if cls._trace_callback:
+            timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            cls._trace_callback(f"[{timestamp}] [{component}] {message}")
+
     def createParkingLot(self, capacity, evcapacity, level):
+        self._trace("ParkingLot", f"createParkingLot(capacity={capacity}, evcapacity={evcapacity}, level={level})")
+        
+        if self.capacity > 0 or self.evCapacity > 0:
+            self._trace("ParkingLot", "  → Error: Parking lot is already initialized")
+            raise ValueError("Parking lot has already been initialized and cannot be recreated.")
+
+        if capacity < 0 or evcapacity < 0 or (capacity == 0 and evcapacity == 0):
+            self._trace("ParkingLot", "  → Error: Invalid capacity values")
+            raise ValueError("Total capacity must be greater than 0 and cannot be negative.")
+
         self.capacity = capacity
         self.evCapacity = evcapacity
         self.level = level
-        # Using None instead of -1 for empty slots to prevent mixed types (int vs Vehicle)
         self.slots = [None] * capacity
         self.evSlots = [None] * evcapacity
         self.numOfOccupiedSlots = 0
         self.numOfOccupiedEvSlots = 0
+        self._trace("ParkingLot", f"Lot initialized: {capacity} regular slots, {evcapacity} EV slots on level {level}")
         return self.level
 
     def getEmptySlot(self):
+        self._trace("ParkingLot", "getEmptySlot() — searching for first empty regular slot")
         try:
-            return self.slots.index(None)
+            idx = self.slots.index(None)
+            self._trace("ParkingLot", f"  → Found empty regular slot at index {idx}")
+            return idx
         except ValueError:
+            self._trace("ParkingLot", "  → No empty regular slots available")
             return -1
 
     def getEmptyEvSlot(self):
+        self._trace("ParkingLot", "getEmptyEvSlot() — searching for first empty EV slot")
         try:
-            return self.evSlots.index(None)
+            idx = self.evSlots.index(None)
+            self._trace("ParkingLot", f"  → Found empty EV slot at index {idx}")
+            return idx
         except ValueError:
+            self._trace("ParkingLot", "  → No empty EV slots available")
             return -1
 
     def park(self, regnum, make, model, color, ev, motor):
+        self._trace("ParkingLot", f"park(regnum={regnum}, make={make}, model={model}, color={color}, ev={ev}, motor={motor})")
+        
+        if not regnum or not str(regnum).strip():
+            self._trace("ParkingLot", "  → Error: Missing registration number")
+            raise ValueError("Registration number cannot be empty.")
+            
+        if self.getSlotNumFromRegNum(regnum, True) != -1 or self.getSlotNumFromRegNum(regnum, False) != -1:
+            self._trace("ParkingLot", f"  → Error: Vehicle with regnum {regnum} is already parked")
+            raise ValueError(f"Vehicle with registration number {regnum} is already parked.")
+
         if ev:
             if self.numOfOccupiedEvSlots < self.evCapacity:
                 slotid = self.getEmptyEvSlot()
                 if slotid != -1:
-                    self.evSlots[slotid] = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color)
+                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=True, is_motorcycle={motor})")
+                    self.evSlots[slotid] = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color, trace=self._trace)
                     self.numOfOccupiedEvSlots += 1
-                    return slotid + 1  # 1-based index for user
+                    self._trace("ParkingLot", f"  → Vehicle stored in EV slot index {slotid}. Allocated slot number: {slotid + 1}")
+                    return slotid + 1
+            self._trace("ParkingLot", "  → EV parking lot is FULL")
             return -1
         else:
             if self.numOfOccupiedSlots < self.capacity:
                 slotid = self.getEmptySlot()
                 if slotid != -1:
-                    self.slots[slotid] = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color)
+                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=False, is_motorcycle={motor})")
+                    self.slots[slotid] = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color, trace=self._trace)
                     self.numOfOccupiedSlots += 1
+                    self._trace("ParkingLot", f"  → Vehicle stored in regular slot index {slotid}. Allocated slot number: {slotid + 1}")
                     return slotid + 1
+            self._trace("ParkingLot", "  → Regular parking lot is FULL")
             return -1
 
     def leave(self, slotid, ev):
+        self._trace("ParkingLot", f"leave(slotid={slotid}, ev={ev})")
         index = slotid - 1
         if index < 0:
+            self._trace("ParkingLot", "  → Invalid slot index (< 0)")
             return False
 
         if ev:
             if index < len(self.evSlots) and self.evSlots[index] is not None:
                 self.evSlots[index] = None
                 self.numOfOccupiedEvSlots -= 1
+                self._trace("ParkingLot", f"  → EV slot {slotid} freed. Occupied EV slots: {self.numOfOccupiedEvSlots}/{self.evCapacity}")
                 return True
+            else:
+                self._trace("ParkingLot", f"  → EV slot {slotid} is already empty or out of bounds")
         else:
             if index < len(self.slots) and self.slots[index] is not None:
                 self.slots[index] = None
                 self.numOfOccupiedSlots -= 1
+                self._trace("ParkingLot", f"  → Regular slot {slotid} freed. Occupied regular slots: {self.numOfOccupiedSlots}/{self.capacity}")
                 return True
+            else:
+                self._trace("ParkingLot", f"  → Regular slot {slotid} is already empty or out of bounds")
         return False
 
     def status(self):
+        self._trace("ParkingLot", "status() — compiling lot occupancy report")
         output = "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         for i, v in enumerate(self.slots):
             if v is not None:
                 output += f"{i+1}\t{self.level}\t{v.regnum}\t\t{v.color}\t\t{v.make}\t\t{v.model}\n"
-            
+
         output += "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         for i, ev in enumerate(self.evSlots):
             if ev is not None:
                 output += f"{i+1}\t{self.level}\t{ev.regnum}\t\t{ev.color}\t\t{ev.make}\t\t{ev.model}\n"
+        self._trace("ParkingLot", f"  → Report generated: {self.numOfOccupiedSlots}/{self.capacity} regular, {self.numOfOccupiedEvSlots}/{self.evCapacity} EV")
         return output
 
     def chargeStatus(self):
+        self._trace("ParkingLot", "chargeStatus() — compiling EV charge report")
         output = "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n"
         for i, ev in enumerate(self.evSlots):
             if ev is not None:
                 output += f"{i+1}\t{self.level}\t{ev.regnum}\t\t{ev.charge}\n"
+        self._trace("ParkingLot", "  → EV charge report generated")
         return output
 
     def getRegNumFromColor(self, color, is_ev):
+        self._trace("ParkingLot", f"getRegNumFromColor(color={color}, is_ev={is_ev})")
         collection = self.evSlots if is_ev else self.slots
-        return [str(v.regnum) for v in collection if v is not None and v.color == color]
-            
+        result = [str(v.regnum) for v in collection if v is not None and v.color == color]
+        self._trace("ParkingLot", f"  → Found {len(result)} match(es)")
+        return result
+
     def getSlotNumFromRegNum(self, regnum, is_ev):
+        self._trace("ParkingLot", f"getSlotNumFromRegNum(regnum={regnum}, is_ev={is_ev})")
         collection = self.evSlots if is_ev else self.slots
         for i, v in enumerate(collection):
             if v is not None and str(v.regnum) == str(regnum):
+                self._trace("ParkingLot", f"  → Found at slot number {i + 1}")
                 return i + 1
+        self._trace("ParkingLot", "  → Not found")
         return -1
-            
-    def getSlotNumFromColor(self, color, is_ev): 
+
+    def getSlotNumFromColor(self, color, is_ev):
+        self._trace("ParkingLot", f"getSlotNumFromColor(color={color}, is_ev={is_ev})")
         collection = self.evSlots if is_ev else self.slots
-        return [str(i + 1) for i, v in enumerate(collection) if v is not None and v.color == color]
-
-
-class AppGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.geometry("650x850")
-        self.root.resizable(0,0)
-        self.root.title("Parking Lot Manager")
-        self.parkinglot = ParkingLot()
-
-        # Variables encapsulated in the class instead of global scope
-        self.num_value = tk.StringVar()
-        self.ev_value = tk.StringVar()
-        self.make_value = tk.StringVar()
-        self.model_value = tk.StringVar()
-        self.color_value = tk.StringVar()
-        self.reg_value = tk.StringVar()
-        self.level_value = tk.StringVar(value="1")
-        self.ev_car_value = tk.IntVar()
-        self.ev_motor_value = tk.IntVar()
-        self.slot1_value = tk.StringVar()
-        self.slot2_value = tk.StringVar()
-        self.reg1_value = tk.StringVar()
-        self.slot_value = tk.StringVar()
-        self.ev_car2_value = tk.IntVar()
-
-        self.create_widgets()
-
-    def create_widgets(self):
-        tk.Label(self.root, text='Parking Lot Manager', font='Arial 14 bold').grid(row=0, column=0, padx=10, columnspan=4)
-        tk.Label(self.root, text='Lot Creation', font='Arial 12 bold').grid(row=1, column=0, padx=10, columnspan=4)
-
-        tk.Label(self.root, text='Number of Regular Spaces', font='Arial 12').grid(row=2, column=0, padx=5)
-        tk.Entry(self.root, textvariable=self.num_value, width=6, font='Arial 12').grid(row=2, column=1, padx=4, pady=2)
-
-        tk.Label(self.root, text='Number of EV Spaces', font='Arial 12').grid(row=2, column=2, padx=5)
-        tk.Entry(self.root, textvariable=self.ev_value, width=6, font='Arial 12').grid(row=2, column=3, padx=4, pady=4)
-
-        tk.Label(self.root, text='Floor Level', font='Arial 12').grid(row=3, column=0, padx=5)
-        tk.Entry(self.root, textvariable=self.level_value, width=6, font='Arial 12').grid(row=3, column=1, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.makeLot, text="Create Parking Lot", font="Arial 12", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(row=4, column=0, padx=4, pady=4)
-
-        tk.Label(self.root, text='Car Management', font='Arial 12 bold').grid(row=5, column=0, padx=10, columnspan=4)
-
-        tk.Label(self.root, text='Make', font='Arial 12').grid(row=6, column=0, padx=5)
-        tk.Entry(self.root, textvariable=self.make_value, width=12, font='Arial 12').grid(row=6, column=1, padx=4, pady=4)
-
-        tk.Label(self.root, text='Model', font='Arial 12').grid(row=6, column=2, padx=5)
-        tk.Entry(self.root, textvariable=self.model_value, width=12, font='Arial 12').grid(row=6, column=3, padx=4, pady=4)
-
-        tk.Label(self.root, text='Color', font='Arial 12').grid(row=7, column=0, padx=5)
-        tk.Entry(self.root, textvariable=self.color_value, width=12, font='Arial 12').grid(row=7, column=1, padx=4, pady=4)
-
-        tk.Label(self.root, text='Registration #', font='Arial 12').grid(row=7, column=2, padx=5)
-        tk.Entry(self.root, textvariable=self.reg_value, width=12, font='Arial 12').grid(row=7, column=3, padx=4, pady=4)
-
-        tk.Checkbutton(self.root, text='Electric', variable=self.ev_car_value, onvalue=1, offvalue=0, font='Arial 12').grid(column=0, row=8, padx=4, pady=4)
-        tk.Checkbutton(self.root, text='Motorcycle', variable=self.ev_motor_value, onvalue=1, offvalue=0, font='Arial 12').grid(column=1, row=8, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.parkCar, text="Park Car", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=0, row=9, padx=4, pady=4)
-
-        tk.Label(self.root, text='Slot #', font='Arial 12').grid(row=10, column=0, padx=5)
-        tk.Entry(self.root, textvariable=self.slot_value, width=12, font='Arial 12').grid(row=10, column=1, padx=4, pady=4)
-
-        tk.Checkbutton(self.root, text='Remove EV?', variable=self.ev_car2_value, onvalue=1, offvalue=0, font='Arial 12').grid(column=2, row=10, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.removeCar, text="Remove Car", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=0, row=11, padx=4, pady=4)
-
-        tk.Label(self.root, text="").grid(row=12, column=0)
-
-        tk.Button(self.root, command=self.slotNumByReg, text="Get Slot ID by Registration #", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=0, row=13, padx=4, pady=4)
-        tk.Entry(self.root, textvariable=self.slot1_value, width=12, font='Arial 12').grid(row=13, column=1, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.slotNumByColor, text="Get Slot ID by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=2, row=13, padx=4, pady=4)
-        tk.Entry(self.root, textvariable=self.slot2_value, width=12, font='Arial 12').grid(row=13, column=3, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.regNumByColor, text="Get Registration # by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=0, row=14, padx=4, pady=4)
-        tk.Entry(self.root, textvariable=self.reg1_value, width=12, font='Arial 12').grid(row=14, column=1, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.chargeStatus, text="EV Charge Status", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5).grid(column=2, row=14, padx=4, pady=4)
-
-        tk.Button(self.root, command=self.status, text="Current Lot Status", font="Arial 11", bg='PaleGreen1', fg='black', activebackground="PaleGreen3", padx=5, pady=5).grid(column=0, row=15, padx=4, pady=4)
-
-        self.tfield = tk.Text(self.root, width=70, height=15)
-        self.tfield.grid(column=0, row=16, padx=10, pady=10, columnspan=4)
-
-    def write_output(self, text):
-        self.tfield.insert(tk.INSERT, text)
-
-    def makeLot(self):
-        try:
-            capacity = int(self.num_value.get())
-            ev_cap = int(self.ev_value.get())
-            level = int(self.level_value.get())
-            self.parkinglot.createParkingLot(capacity, ev_cap, level)
-            self.write_output(f"Created a parking lot with {capacity} regular slots and {ev_cap} ev slots on level: {level}\n")
-        except ValueError:
-            self.write_output("Error: Please enter valid integers for lot creation.\n")
-
-    def parkCar(self):
-        res = self.parkinglot.park(
-            self.reg_value.get(), self.make_value.get(), self.model_value.get(), 
-            self.color_value.get(), self.ev_car_value.get(), self.ev_motor_value.get()
-        )
-        if res == -1:
-            self.write_output("Sorry, parking lot is full\n")
-        else:
-            self.write_output(f"Allocated slot number: {res}\n")
-
-    def removeCar(self):
-        try:
-            slot = int(self.slot_value.get())
-            status = self.parkinglot.leave(slot, self.ev_car2_value.get())
-            if status:
-                self.write_output(f"Slot number {slot} is free\n")
-            else:
-                self.write_output(f"Unable to remove a car from slot: {slot}\n")
-        except ValueError:
-            self.write_output("Error: Please enter a valid slot number.\n")
-
-    def slotNumByReg(self):
-        slot_val = self.slot1_value.get()
-        slotnum = self.parkinglot.getSlotNumFromRegNum(slot_val, False)
-        slotnum2 = self.parkinglot.getSlotNumFromRegNum(slot_val, True)
-        
-        if slotnum != -1:
-            self.write_output(f"Identified slot: {slotnum}\n")
-        elif slotnum2 != -1:
-            self.write_output(f"Identified slot (EV): {slotnum2}\n")
-        else:
-            self.write_output("Not found\n")
-
-    def slotNumByColor(self):
-        color = self.slot2_value.get()
-        slotnums = self.parkinglot.getSlotNumFromColor(color, False)
-        slotnums2 = self.parkinglot.getSlotNumFromColor(color, True)
-        if slotnums:
-            self.write_output(f"Identified slots: {', '.join(slotnums)}\n")
-        if slotnums2:
-            self.write_output(f"Identified slots (EV): {', '.join(slotnums2)}\n")
-
-    def regNumByColor(self):
-        color = self.reg1_value.get()
-        regnums = self.parkinglot.getRegNumFromColor(color, False)
-        regnums2 = self.parkinglot.getRegNumFromColor(color, True)
-        if regnums:
-            self.write_output(f"Registation Numbers: {', '.join(regnums)}\n")
-        if regnums2:
-            self.write_output(f"Registation Numbers (EV): {', '.join(regnums2)}\n")
-
-    def chargeStatus(self):
-        self.write_output(self.parkinglot.chargeStatus())
-
-    def status(self):
-        self.write_output(self.parkinglot.status())
-
-
-def main():
-    root = tk.Tk()
-    app = AppGUI(root)
-    root.mainloop()
-
-if __name__ == '__main__':
-    main()
+        result = [str(i + 1) for i, v in enumerate(collection) if v is not None and v.color == color]
+        self._trace("ParkingLot", f"  → Found {len(result)} match(es): {result}")
+        return result
