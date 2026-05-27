@@ -106,7 +106,7 @@ This document tracks the gap between the current prototype implementation and th
 **Manager Requirement:** Different facilities have different business rules, access mechanisms (boom gates vs. LPR), and vehicle policies.
 
 **Debt Taken:**
-- **Single hardcoded facility.** The prototype creates one `ParkingLot` per GUI instance. There is no multi-facility configuration.
+- **Single hardcoded facility in GUI.** The core domain architecture (`ParkingLot` class) is fully decoupled and supports scaling to multiple facilities concurrently. However, the `AppGUI` prototype is hardcoded to hold only a single `ParkingLot` reference at a time. Managing multiple lots concurrently (e.g., via a dashboard or dropdown) is not implemented in the UI.
 - **No facility-specific rule overrides.** Pricing is pluggable via Strategy, but access mechanisms, operating hours, and vehicle-type policies are not configurable per facility.
 - **No physical access control integration.** The GUI simulates entry/exit with buttons. There is no integration with boom gates, LPR cameras, or ticket dispensers.
 
