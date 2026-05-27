@@ -14,7 +14,7 @@ python3 AppGUI.py
 ### Running Tests
 ```bash
 cd refactored_code
-python3 -m unittest test_ParkingManager -v
+python3 -m unittest discover tests -v
 ```
 
 ## Project Structure
