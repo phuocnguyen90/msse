@@ -141,20 +141,21 @@ classDiagram
         +int numOfOccupiedEvSlots
         +list slots
         +list evSlots
-        -list trace_observers
+        -list event_observers
         +createParkingLot(capacity, evcapacity, level)
         +park(regnum, make, model, color, ev, motor, vehicle_type)
         +leave(slotid, ev)
         +status()
         +chargeStatus()
-        +add_trace_observer(observer)
-        +remove_trace_observer(observer)
-        -_trace(component, message)
+        +set_pricing_strategy(strategy)
+        +add_event_observer(observer)
+        +remove_event_observer(observer)
+        +publish(event)
     }
     note for ParkingLot "Still owns slot search and query helper methods. They are omitted here to keep the high-level class view readable."
 
     class VehicleFactory {
-        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, trace, vehicle_type)
+        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)
     }
 
     class Vehicle {
@@ -192,6 +193,35 @@ classDiagram
     VehicleFactory ..> ElectricCar : instantiates
     VehicleFactory ..> ElectricBike : instantiates
 
+    class PricingStrategy {
+        <<interface>>
+        +calculate_fee(vehicle)
+    }
+    class FlatRateStrategy
+    class EVPremiumStrategy
+    class VehicleTypeStrategy
+    PricingStrategy <|-- FlatRateStrategy
+    PricingStrategy <|-- EVPremiumStrategy
+    PricingStrategy <|-- VehicleTypeStrategy
+
+    ParkingLot o-- PricingStrategy : strategy
+
+    class DomainEvent {
+        <<base class>>
+        +datetime timestamp
+    }
+    class LotInitializedEvent
+    class VehicleParkedEvent
+    class VehicleDepartedEvent
+    class VehicleParkFailedEvent
+
+    DomainEvent <|-- LotInitializedEvent
+    DomainEvent <|-- VehicleParkedEvent
+    DomainEvent <|-- VehicleDepartedEvent
+    DomainEvent <|-- VehicleParkFailedEvent
+
+    ParkingLot ..> DomainEvent : publishes
+
     ParkingLot "1" *-- "*" Vehicle : stores in slots and evSlots
 
     class AppGUI {
@@ -202,7 +232,7 @@ classDiagram
         +parkCar()
         +removeCar()
         +write_output(text)
-        -_append_trace(message)
+        -_handle_event(event)
     }
     note for AppGUI "Also contains UI handlers for search, status, charge status, and randomized sample input."
     class TkinterWidgets {
@@ -214,7 +244,7 @@ classDiagram
     }
     AppGUI --> ParkingLot : uses
     AppGUI --> TkinterWidgets : owns
-    ParkingLot ..> AppGUI : notifies trace observer callback
+    ParkingLot ..> AppGUI : notifies event observer callback
 ```
 
 *Source: [`../../uml_diagrams/refactored_class_diagram.mmd`](../../uml_diagrams/refactored_class_diagram.mmd)*
@@ -229,22 +259,21 @@ sequenceDiagram
     participant PL as ParkingLot
     participant VF as VehicleFactory
     participant EC as ElectricCar
-    participant Trace as Trace Observer
+    participant EventBus as Event Observer
 
     User->>GUI: Click "Park Car" (is_ev=1, motor=0)
     GUI->>PL: park(regnum, make, model, color, 1, 0, vehicle_type=None)
-    PL->>Trace: _trace("park(...)")
     PL->>PL: validate registration number
     PL->>PL: getSlotNumFromRegNum(regnum, True)
     PL->>PL: getSlotNumFromRegNum(regnum, False)
     PL->>PL: check EV capacity
     PL->>PL: getEmptyEvSlot()
-    PL->>VF: create_vehicle(True, False, regnum, make, model, color, trace=_trace, vehicle_type=None)
-    VF->>Trace: _trace("Created ElectricCar...")
+    PL->>VF: create_vehicle(True, False, regnum, make, model, color, vehicle_type=None)
     VF->>EC: ElectricCar(regnum, make, model, color)
     EC-->>VF: electric car instance
     VF-->>PL: polymorphic Vehicle instance
     PL->>PL: evSlots[index] = instance
+    PL->>EventBus: publish(VehicleParkedEvent)
     PL-->>GUI: return allocated slot number
     GUI->>GUI: write_output("Allocated slot number: ...")
     GUI-->>User: Display output

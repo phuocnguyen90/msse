@@ -4,7 +4,7 @@ from ElectricVehicle import ElectricCar, ElectricBike
 
 class VehicleFactory:
     @staticmethod
-    def create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, trace=None, vehicle_type=None):
+    def create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type=None):
         normalized_type = vehicle_type.lower() if vehicle_type else None
 
         if normalized_type in ("truck", "bus") and is_ev:
@@ -31,6 +31,4 @@ class VehicleFactory:
 
         vehicle = vehicle_class(regnum, make, model, color)
 
-        if trace:
-            trace("VehicleFactory", f"  → Created {vehicle_class.__name__}(regnum={regnum}, make={make}, model={model}, color={color})")
         return vehicle

@@ -59,7 +59,8 @@ project_3_software_design/
 
 ## Design Patterns Used
 1. **Factory Method** - `VehicleFactory.create_vehicle()` centralizes vehicle instantiation, eliminating tight coupling between `ParkingLot` and concrete vehicle classes.
-2. **Observer** - `ParkingLot` publishes trace events via `add_trace_observer()`, allowing the GUI and other components to subscribe to domain-level notifications without direct coupling.
+2. **Observer / Event-Driven Architecture** - `ParkingLot` publishes strongly typed `DomainEvent` objects via `add_event_observer()`, allowing the GUI and other components to subscribe to domain-level milestones (e.g. `VehicleParkedEvent`) without direct coupling or relying on brittle strings.
+3. **Strategy** - Extracted parking fee calculation into `PricingStrategy` implementations (`FlatRateStrategy`, `EVPremiumStrategy`, `VehicleTypeStrategy`), allowing dynamic calculation logic.
 
 ## Key Improvements
 - Removed global variables and extracted GUI into `AppGUI` class

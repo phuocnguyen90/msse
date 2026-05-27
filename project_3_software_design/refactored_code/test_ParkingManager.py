@@ -3,6 +3,8 @@ from Vehicle import Vehicle, Car, Truck, Motorcycle, Bus
 from ElectricVehicle import ElectricVehicle, ElectricCar, ElectricBike
 from VehicleFactory import VehicleFactory
 from ParkingManager import ParkingLot
+from PricingStrategy import FlatRateStrategy, EVPremiumStrategy, VehicleTypeStrategy
+from DomainEvents import LotInitializedEvent, VehicleParkedEvent, VehicleDepartedEvent
 
 
 class TestVehicleFactory(unittest.TestCase):
@@ -160,16 +162,16 @@ class TestParkingLot(unittest.TestCase):
         second_trace = []
         lot2 = ParkingLot()
 
-        self.lot.add_trace_observer(first_trace.append)
-        lot2.add_trace_observer(second_trace.append)
+        self.lot.add_event_observer(first_trace.append)
+        lot2.add_event_observer(second_trace.append)
 
         self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         lot2.createParkingLot(capacity=1, evcapacity=0, level=2)
 
-        self.assertTrue(first_trace)
-        self.assertTrue(second_trace)
-        self.assertIn("level=1", first_trace[0])
-        self.assertIn("level=2", second_trace[0])
+        self.assertEqual(len(first_trace), 1)
+        self.assertEqual(len(second_trace), 1)
+        self.assertEqual(first_trace[0].level, 1)
+        self.assertEqual(second_trace[0].level, 2)
 
     def test_create_parking_lot(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
@@ -259,37 +261,39 @@ class TestParkingLot(unittest.TestCase):
     def test_leave_regular(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
-        success = self.lot.leave(1, False)
+        success, fee = self.lot.leave(1, False)
         self.assertTrue(success)
+        self.assertEqual(fee, 10.0)
         self.assertEqual(self.lot.numOfOccupiedSlots, 0)
         self.assertIsNone(self.lot.slots[0])
 
     def test_leave_ev(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
-        success = self.lot.leave(1, True)
+        success, fee = self.lot.leave(1, True)
         self.assertTrue(success)
+        self.assertEqual(fee, 12.0) # default VehicleTypeStrategy (10.0 base + 2.0 ev surcharge)
         self.assertEqual(self.lot.numOfOccupiedEvSlots, 0)
         self.assertIsNone(self.lot.evSlots[0])
 
     def test_leave_negative_slot(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
-        success = self.lot.leave(-1, False)
+        success, fee = self.lot.leave(-1, False)
         self.assertFalse(success)
 
     def test_leave_out_of_bounds(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
-        success = self.lot.leave(10, False)
+        success, fee = self.lot.leave(10, False)
         self.assertFalse(success)
 
     def test_leave_already_empty(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
-        success = self.lot.leave(1, False)
+        success, fee = self.lot.leave(1, False)
         self.assertFalse(success)
 
     def test_leave_ev_already_empty(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
-        success = self.lot.leave(1, True)
+        success, fee = self.lot.leave(1, True)
         self.assertFalse(success)
 
     def test_status_empty(self):
@@ -369,30 +373,30 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(result, [])
 
     def test_tracing_create_and_park(self):
-        traced_messages = []
-        def mock_trace(message):
-            traced_messages.append(message)
+        traced_events = []
+        def mock_event(event):
+            traced_events.append(event)
 
         lot = ParkingLot()
-        lot.add_trace_observer(mock_trace)
+        lot.add_event_observer(mock_event)
         lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         lot.park("REG1", "Honda", "Civic", "Red", False, False)
 
-        self.assertGreater(len(traced_messages), 0)
-        self.assertTrue(any("createParkingLot" in msg for msg in traced_messages))
-        self.assertTrue(any("park" in msg for msg in traced_messages))
+        self.assertGreater(len(traced_events), 0)
+        self.assertTrue(any(isinstance(e, LotInitializedEvent) for e in traced_events))
+        self.assertTrue(any(isinstance(e, VehicleParkedEvent) for e in traced_events))
 
     def test_tracing_leave(self):
-        traced_messages = []
-        def mock_trace(message):
-            traced_messages.append(message)
+        traced_events = []
+        def mock_event(event):
+            traced_events.append(event)
 
-        self.lot.add_trace_observer(mock_trace)
+        self.lot.add_event_observer(mock_event)
         self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.leave(1, False)
 
-        self.assertTrue(any("leave" in msg for msg in traced_messages))
+        self.assertTrue(any(isinstance(e, VehicleDepartedEvent) for e in traced_events))
 
     def test_get_slot_num_from_make_and_model(self):
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
@@ -410,6 +414,46 @@ class TestParkingLot(unittest.TestCase):
 
         model_s_slots = self.lot.getSlotNumFromModel("Model S", True)
         self.assertEqual(model_s_slots, ["1"])
+
+
+class TestPricingStrategy(unittest.TestCase):
+    def test_flat_rate_strategy(self):
+        strategy = FlatRateStrategy(rate=20.0)
+        car = Car("123", "Make", "Model", "Color")
+        self.assertEqual(strategy.calculate_fee(car), 20.0)
+
+    def test_ev_premium_strategy(self):
+        strategy = EVPremiumStrategy(base_rate=10.0, ev_surcharge=5.0)
+        car = Car("123", "Make", "Model", "Color")
+        ev = ElectricCar("456", "Make", "Model", "Color")
+        self.assertEqual(strategy.calculate_fee(car), 10.0)
+        self.assertEqual(strategy.calculate_fee(ev), 15.0)
+
+    def test_vehicle_type_strategy(self):
+        strategy = VehicleTypeStrategy(motorcycle_rate=5.0, car_rate=10.0, truck_bus_rate=15.0, ev_surcharge=2.0)
+        car = Car("1", "Make", "Model", "Color")
+        moto = Motorcycle("2", "Make", "Model", "Color")
+        truck = Truck("3", "Make", "Model", "Color")
+        bus = Bus("4", "Make", "Model", "Color")
+        ev_car = ElectricCar("5", "Make", "Model", "Color")
+        ev_bike = ElectricBike("6", "Make", "Model", "Color")
+
+        self.assertEqual(strategy.calculate_fee(car), 10.0)
+        self.assertEqual(strategy.calculate_fee(moto), 5.0)
+        self.assertEqual(strategy.calculate_fee(truck), 15.0)
+        self.assertEqual(strategy.calculate_fee(bus), 15.0)
+        self.assertEqual(strategy.calculate_fee(ev_car), 12.0)
+        self.assertEqual(strategy.calculate_fee(ev_bike), 7.0)
+
+    def test_lot_with_custom_strategy(self):
+        lot = ParkingLot()
+        lot.set_pricing_strategy(FlatRateStrategy(rate=42.0))
+        lot.createParkingLot(capacity=2, evcapacity=0, level=1)
+        lot.park("REG1", "Honda", "Civic", "Red", False, False)
+        success, fee = lot.leave(1, False)
+        self.assertTrue(success)
+        self.assertEqual(fee, 42.0)
+
 
 if __name__ == '__main__':
     unittest.main()

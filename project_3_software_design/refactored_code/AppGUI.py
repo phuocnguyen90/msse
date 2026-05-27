@@ -30,7 +30,7 @@ class AppGUI:
         self.create_widgets()
 
         self.parkinglot = ParkingLot()
-        self.parkinglot.add_trace_observer(self._append_trace)
+        self.parkinglot.add_event_observer(self._handle_event)
 
     def _setup_layout(self):
         tk.Label(self.root, text="Parking Lot Manager — Live Logic Trace Demonstration",
@@ -61,7 +61,9 @@ class AppGUI:
         self.tfield = tk.Text(self.bottom_frame, width=130, height=12, font=("Courier New", 10))
         self.tfield.pack(fill=tk.X, expand=True, padx=5, pady=5)
 
-    def _append_trace(self, message):
+    def _handle_event(self, event):
+        timestamp = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
+        message = f"[{timestamp}] [{event.__class__.__name__}] {str(event)}"
         self.trace_field.config(state=tk.NORMAL)
         self.trace_field.insert(tk.END, message + "\n")
         self.trace_field.see(tk.END)
@@ -192,9 +194,9 @@ class AppGUI:
     def removeCar(self):
         try:
             slot = int(self.slot_value.get())
-            status = self.parkinglot.leave(slot, self.ev_car2_value.get())
+            status, fee = self.parkinglot.leave(slot, self.ev_car2_value.get())
             if status:
-                self.write_output(f"Slot number {slot} is free\n")
+                self.write_output(f"Slot number {slot} is free. Parking fee: ${fee:.2f}\n")
             else:
                 self.write_output(f"Unable to remove a vehicle from slot: {slot}\n")
         except ValueError:
