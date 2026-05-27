@@ -1,7 +1,7 @@
 # EasyParkPlus - Parking Lot Manager (Refactored)
 
 ## Project Overview
-This is the refactored EasyParkPlus parking lot management prototype, submitted for Project 3: Software Design.
+This is the refactored EasyParkPlus parking lot management prototype, submitted for Project 3: Software Design. The main cohesive submission report is [`docs/Final_Report.md`](docs/Final_Report.md), with detailed supporting documents kept under `docs/implementations/`.
 
 ## Quick Start
 
@@ -13,8 +13,7 @@ python3 AppGUI.py
 
 ### Running Tests
 ```bash
-cd refactored_code
-python3 -m unittest discover tests -v
+python3 -m unittest discover -s refactored_code -p "test_*.py"
 ```
 
 ## Project Structure
@@ -25,6 +24,7 @@ project_3_software_design/
 │   └── Screenshot 2026-05-27 145128.png
 ├── docs/
 │   ├── 07_Interview_Questions_for_Technical_Manager.md
+│   ├── Final_Report.md
 │   ├── implementations/
 │   │   ├── 08_Domain_Driven_Design.md
 │   │   ├── 09_Refactoring_Justification.md
@@ -50,18 +50,16 @@ project_3_software_design/
 │   ├── ParkingManager.py      # Core domain logic (Observer publisher)
 │   ├── PricingStrategy.py     # Strategy pattern pricing implementations
 │   ├── Vehicle.py             # Base vehicle hierarchy
-│   ├── VehicleFactory.py      # Factory Method pattern implementation
+│   ├── VehicleFactory.py      # Simple Factory / factory-style creation
 │   └── tests/                 # Unit tests (55 tests)
 └── uml_diagrams/
-    ├── original_class_diagram.png
-    ├── original_sequence_diagram.png
-    ├── refactored_class_diagram.png
-    └── refactored_sequence_diagram.png
+    ├── original_*             # Original overview, inheritance, instantiation, and sequence diagrams
+    └── refactored_*           # Refactored overview, vehicle factory, event, pricing, and sequence diagrams
 ```
 
 ## Design Patterns Used
-1. **Factory Method** - `VehicleFactory.create_vehicle()` centralizes vehicle instantiation, eliminating tight coupling between `ParkingLot` and concrete vehicle classes.
-2. **Observer / Event-Driven Architecture** - `ParkingLot` publishes strongly typed `DomainEvent` objects via `add_event_observer()`, allowing the GUI and other components to subscribe to domain-level milestones (e.g. `VehicleParkedEvent`) without direct coupling or relying on brittle strings.
+1. **Simple Factory / factory-style creation** - `VehicleFactory.create_vehicle()` centralizes vehicle instantiation, eliminating tight coupling between `ParkingLot` and concrete vehicle classes.
+2. **Observer / Event-Driven Scaffolding** - `ParkingLot` publishes strongly typed `DomainEvent` objects via `add_event_observer()`, allowing the GUI and other components to subscribe to domain-level milestones (e.g. `VehicleParkedEvent`) without direct coupling or relying on brittle strings.
 3. **Strategy** - Extracted parking fee calculation into `PricingStrategy` implementations (`FlatRateStrategy`, `EVPremiumStrategy`, `VehicleTypeStrategy`), allowing dynamic calculation logic.
 
 ## Key Improvements
@@ -71,6 +69,8 @@ project_3_software_design/
 - Added input validation (empty regnum, duplicate detection, bounds checking)
 - Replaced `-1` sentinel values with semantically correct `None`
 - Removed dead code (`edit()`, unused imports, unreachable returns)
+- Added typed domain events and pluggable pricing strategies
+- Added a cohesive final report and focused UML diagram set
 
 ## Requirements
 - Python 3.x

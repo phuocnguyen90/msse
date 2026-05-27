@@ -229,7 +229,7 @@ classDiagram
 *Source: [`../../uml_diagrams/refactored_overview_diagram.mmd`](../../uml_diagrams/refactored_overview_diagram.mmd)*
 
 #### b) Vehicle & Factory Hierarchy
-This diagram focuses on the inheritance tree and the Factory Method pattern.
+This diagram focuses on the inheritance tree and the Simple Factory / factory-style creation pattern.
 
 ```mermaid
 classDiagram
@@ -289,6 +289,10 @@ classDiagram
         +remove_event_observer(observer)
         +publish(event)
     }
+    class EventObserver {
+        <<callback>>
+        +handle(event)
+    }
 
     class DomainEvent {
         <<base class>>
@@ -328,6 +332,7 @@ classDiagram
     DomainEvent <|-- PricingStrategyChangedEvent
 
     ParkingLot ..> DomainEvent : publishes
+    ParkingLot o-- EventObserver : notifies
 
     note for ParkingLot "Synchronous in-process observer list. Future: async message broker"
     note for DomainEvent "Strongly typed events replace brittle string traces"
@@ -381,7 +386,7 @@ classDiagram
 *Source: [`../../uml_diagrams/refactored_pricing_strategy_diagram.mmd`](../../uml_diagrams/refactored_pricing_strategy_diagram.mmd)*
 
 ### 2. Behavioral Diagram (Sequence Diagram - Parking a Car)
-This sequence diagram shows the refactored flow. The GUI now interacts with the `ParkingLot`, which validates the request, checks for duplicate registrations, and requests a vehicle instance from `VehicleFactory`. The GUI is responsible for displaying the returned result, while trace messages are delivered through the registered observer callback.
+This sequence diagram shows the refactored flow. The GUI now interacts with the `ParkingLot`, which validates the request, checks for duplicate registrations, and requests a vehicle instance from `VehicleFactory`. The GUI is responsible for displaying the returned result, while typed domain events are delivered through the registered observer callback.
 
 ```mermaid
 sequenceDiagram
@@ -390,7 +395,7 @@ sequenceDiagram
     participant PL as ParkingLot
     participant VF as VehicleFactory
     participant EC as ElectricCar
-    participant EventBus as Event Observer
+    participant Obs as event_observers
 
     User->>GUI: Click "Park Car" (is_ev=1, motor=0)
     GUI->>PL: park(regnum, make, model, color, 1, 0, vehicle_type=None)
@@ -404,7 +409,7 @@ sequenceDiagram
     EC-->>VF: electric car instance
     VF-->>PL: polymorphic Vehicle instance
     PL->>PL: evSlots[index] = instance
-    PL->>EventBus: publish(VehicleParkedEvent)
+    PL->>Obs: publish(VehicleParkedEvent)
     PL-->>GUI: return allocated slot number
     GUI->>GUI: write_output("Allocated slot number: ...")
     GUI-->>User: Display output
