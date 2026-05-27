@@ -3,18 +3,24 @@ classDiagram
         +int capacity
         +int evCapacity
         +int level
+        +int numOfOccupiedSlots
+        +int numOfOccupiedEvSlots
         +list slots
         +list evSlots
         -list trace_observers
-        +createParkingLot(...)
+        +createParkingLot(capacity, evcapacity, level)
         +park(regnum, make, model, color, ev, motor, vehicle_type)
         +leave(slotid, ev)
+        +status()
+        +chargeStatus()
         +add_trace_observer(observer)
         +remove_trace_observer(observer)
+        -_trace(component, message)
     }
+    note for ParkingLot "Still owns slot search and query helper methods. They are omitted here to keep the high-level class view readable."
     
     class VehicleFactory {
-        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)$ Vehicle
+        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, trace, vehicle_type)
     }
     
     class Vehicle {
@@ -52,7 +58,7 @@ classDiagram
     VehicleFactory ..> ElectricCar : instantiates
     VehicleFactory ..> ElectricBike : instantiates
     
-    ParkingLot "1" *-- "*" Vehicle : stores in slots
+    ParkingLot "1" *-- "*" Vehicle : stores in slots and evSlots
     
     class AppGUI {
         -ParkingLot parkinglot
@@ -61,6 +67,17 @@ classDiagram
         +makeLot()
         +parkCar()
         +removeCar()
+        +write_output(text)
+        -_append_trace(message)
+    }
+    note for AppGUI "Also contains UI handlers for search, status, charge status, and randomized sample input."
+    class TkinterWidgets {
+        <<GUI state>>
+        +StringVar inputs
+        +IntVar flags
+        +Text output
+        +Text trace
     }
     AppGUI --> ParkingLot : uses
-    ParkingLot ..> AppGUI : notifies trace observer
+    AppGUI --> TkinterWidgets : owns
+    ParkingLot ..> AppGUI : notifies trace observer callback

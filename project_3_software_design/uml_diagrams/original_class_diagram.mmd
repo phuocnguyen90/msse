@@ -3,13 +3,27 @@ classDiagram
         +int capacity
         +int evCapacity
         +int level
+        +int numOfOccupiedSlots
+        +int numOfOccupiedEvSlots
         +list slots
         +list evSlots
         +createParkingLot(capacity, evcapacity, level)
         +park(regnum, make, model, color, ev, motor)
         +leave(slotid, ev)
         +edit(slotid, regnum, make, model, color, ev)
-        +status()
+        +parkCar()
+        +removeCar()
+        +makeLot()
+    }
+    note for ParkingLot "Also contains status, charge-status, slot search, query, and Tkinter output helper methods."
+
+    class TkinterGlobals {
+        <<global module state>>
+        +Tk root
+        +StringVar inputs
+        +IntVar flags
+        +Text tfield
+        +main()
     }
     
     class Vehicle {
@@ -17,10 +31,6 @@ classDiagram
         +string make
         +string model
         +string color
-        +getMake()
-        +getModel()
-        +getColor()
-        +getRegNum()
     }
     class Car {
         +getType()
@@ -55,11 +65,17 @@ classDiagram
         +getType()
     }
     
-    %% Broken inheritance in original code!
-    ElectricVehicle <.. ElectricCar : merely calls __init__
-    ElectricVehicle <.. ElectricBike : merely calls __init__
+    %% Broken inheritance in original code: ElectricCar and ElectricBike
+    %% call ElectricVehicle.__init__ but do not subclass ElectricVehicle.
+    ElectricVehicle <.. ElectricCar : calls __init__ only
+    ElectricVehicle <.. ElectricBike : calls __init__ only
     
-    ParkingLot --> Vehicle : creates & stores
-    ParkingLot --> ElectricVehicle : creates & stores
+    TkinterGlobals --> ParkingLot : creates instance and binds buttons
+    ParkingLot ..> TkinterGlobals : reads input vars and writes tfield
+    ParkingLot --> Car : creates directly
+    ParkingLot --> Motorcycle : creates directly
     ParkingLot --> ElectricCar : creates directly
     ParkingLot --> ElectricBike : creates directly
+    ParkingLot "1" *-- "*" Vehicle : regular slots store Car/Motorcycle
+    ParkingLot "1" *-- "*" ElectricCar : EV slots may store
+    ParkingLot "1" *-- "*" ElectricBike : EV slots may store

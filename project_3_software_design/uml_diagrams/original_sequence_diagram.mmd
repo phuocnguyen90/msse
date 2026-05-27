@@ -1,15 +1,19 @@
 sequenceDiagram
     actor User
-    participant GUI as Tkinter GUI (Global Scope)
+    participant GUI as Tkinter Button/Globals
     participant PL as ParkingLot
     participant EC as ElectricCar
+    participant TF as Tkinter Text tfield
     
     User->>GUI: Click "Park Car" (is_ev=1, motor=0)
-    GUI->>PL: park(regnum, make, model, color, 1, 0)
-    PL->>PL: check capacity (numOfOccupiedEvSlots < evCapacity)
+    GUI->>PL: parkCar()
+    PL->>GUI: read reg/make/model/color/ev/motor StringVar and IntVar values
+    PL->>PL: park(regnum, make, model, color, 1, 0)
+    PL->>PL: check EV capacity
     PL->>PL: getEmptyEvSlot()
-    PL->>EC: new ElectricCar(regnum, make, model, color)
-    EC-->>PL: instance
-    PL->>PL: evSlots[slotid] = instance
-    PL->>GUI: tfield.insert("Allocated slot...")
-    PL-->>GUI: return slotid
+    PL->>EC: ElectricCar(regnum, make, model, color)
+    EC-->>PL: electric car instance
+    PL->>PL: evSlots[index] = instance
+    PL-->>PL: return allocated slot number
+    PL->>TF: insert("Allocated slot number: ...")
+    GUI-->>User: Output appears in text field
