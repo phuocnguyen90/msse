@@ -1,0 +1,49 @@
+classDiagram
+    class ParkingLot {
+        -list event_observers
+        +add_event_observer(observer)
+        +remove_event_observer(observer)
+        +publish(event)
+    }
+
+    class DomainEvent {
+        <<base class>>
+        +datetime timestamp
+    }
+    class LotInitializedEvent {
+        +int capacity
+        +int ev_capacity
+        +int level
+    }
+    class VehicleParkedEvent {
+        +Vehicle vehicle
+        +int slot_id
+        +bool is_ev
+    }
+    class VehicleDepartedEvent {
+        +Vehicle vehicle
+        +int slot_id
+        +bool is_ev
+        +float fee
+    }
+    class VehicleParkFailedEvent {
+        +string reason
+    }
+    class VehicleDepartFailedEvent {
+        +string reason
+    }
+    class PricingStrategyChangedEvent {
+        +string strategy_name
+    }
+
+    DomainEvent <|-- LotInitializedEvent
+    DomainEvent <|-- VehicleParkedEvent
+    DomainEvent <|-- VehicleDepartedEvent
+    DomainEvent <|-- VehicleParkFailedEvent
+    DomainEvent <|-- VehicleDepartFailedEvent
+    DomainEvent <|-- PricingStrategyChangedEvent
+
+    ParkingLot ..> DomainEvent : publishes
+
+    note for ParkingLot "Synchronous in-process observer list. Future: async message broker"
+    note for DomainEvent "Strongly typed events replace brittle string traces"

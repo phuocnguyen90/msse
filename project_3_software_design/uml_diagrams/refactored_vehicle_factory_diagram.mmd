@@ -1,0 +1,42 @@
+classDiagram
+    class VehicleFactory {
+        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)
+    }
+
+    class Vehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+        +string type
+    }
+    class Car
+    class Truck
+    class Motorcycle
+    class Bus
+    class ElectricVehicle {
+        +int charge
+        +setCharge(charge)
+        +getCharge()
+    }
+    class ElectricCar
+    class ElectricBike
+
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
+    Vehicle <|-- ElectricVehicle
+    ElectricVehicle <|-- ElectricCar
+    ElectricVehicle <|-- ElectricBike
+
+    VehicleFactory ..> Car : instantiates
+    VehicleFactory ..> Truck : instantiates
+    VehicleFactory ..> Motorcycle : instantiates
+    VehicleFactory ..> Bus : instantiates
+    VehicleFactory ..> ElectricCar : instantiates
+    VehicleFactory ..> ElectricBike : instantiates
+
+    note for Vehicle "Dynamic type property derived from class name"
+    note for ElectricCar "Overrides type as 'Car' for parking categorization"
+    note for ElectricBike "Overrides type as 'Motorcycle' for parking categorization"

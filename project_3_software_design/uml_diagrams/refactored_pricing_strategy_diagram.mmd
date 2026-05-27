@@ -1,0 +1,37 @@
+classDiagram
+    class ParkingLot {
+        +set_pricing_strategy(strategy)
+        +leave(slotid, ev)
+    }
+    note for ParkingLot "Delegates fee calculation to strategy at departure"
+
+    class PricingStrategy {
+        <<interface>>
+        +calculate_fee(vehicle)
+    }
+    class FlatRateStrategy {
+        +float rate
+        +calculate_fee(vehicle)
+    }
+    class EVPremiumStrategy {
+        +float base_rate
+        +float ev_surcharge
+        +calculate_fee(vehicle)
+    }
+    class VehicleTypeStrategy {
+        +float motorcycle_rate
+        +float car_rate
+        +float truck_bus_rate
+        +float ev_surcharge
+        +calculate_fee(vehicle)
+    }
+
+    PricingStrategy <|-- FlatRateStrategy
+    PricingStrategy <|-- EVPremiumStrategy
+    PricingStrategy <|-- VehicleTypeStrategy
+
+    ParkingLot o-- PricingStrategy : strategy
+
+    note for FlatRateStrategy "Fixed fee regardless of vehicle type"
+    note for EVPremiumStrategy "Base rate + EV surcharge via duck typing"
+    note for VehicleTypeStrategy "Differentiated by vehicle.type + EV surcharge"

@@ -128,20 +128,16 @@ sequenceDiagram
 
 ## Part 2: Re-Designed Codebase
 
-### 1. Structural Diagram (Class Diagram)
-This diagram illustrates the refactored architecture. The `AppGUI` is separated from the `ParkingLot` and owns the Tkinter state. The `ParkingLot` supports observer-style trace notifications, so UI or logging components can subscribe to domain events. Vehicle creation is delegated to `VehicleFactory`, which centralizes the concrete type decision for `Car`, `Truck`, `Motorcycle`, `Bus`, `ElectricCar`, and `ElectricBike`. The inheritance chain for electric vehicles has been corrected.
+### 1. Structural Diagrams (Class Diagrams)
+
+The refactored architecture is shown as a set of focused diagrams rather than one overloaded class diagram. This mirrors the DDD bounded-context approach used elsewhere in the documentation.
+
+#### a) High-Level System Overview
+This diagram shows the main architectural components and their responsibilities at a glance.
 
 ```mermaid
 classDiagram
     class ParkingLot {
-        +int capacity
-        +int evCapacity
-        +int level
-        +int numOfOccupiedSlots
-        +int numOfOccupiedEvSlots
-        +list slots
-        +list evSlots
-        -list event_observers
         +createParkingLot(capacity, evcapacity, level)
         +park(regnum, make, model, color, ev, motor, vehicle_type)
         +leave(slotid, ev)
@@ -152,8 +148,49 @@ classDiagram
         +remove_event_observer(observer)
         +publish(event)
     }
-    note for ParkingLot "Still owns slot search and query helper methods. They are omitted here to keep the high-level class view readable."
+    note for ParkingLot "Owns slot state, queries, and delegates to collaborators"
 
+    class AppGUI {
+        +create_widgets()
+        +makeLot()
+        +parkCar()
+        +removeCar()
+        +write_output(text)
+        -_handle_event(event)
+    }
+    note for AppGUI "Owns Tkinter state and subscribes to domain events"
+
+    class VehicleFactory {
+        +create_vehicle(...)
+    }
+    note for VehicleFactory "Centralizes vehicle creation"
+
+    class PricingStrategy {
+        <<interface>>
+        +calculate_fee(vehicle)
+    }
+    note for PricingStrategy "Pluggable pricing models"
+
+    class DomainEvent {
+        <<base>>
+        +datetime timestamp
+    }
+    note for DomainEvent "Typed events for audit and integration"
+
+    AppGUI --> ParkingLot : uses
+    ParkingLot ..> VehicleFactory : delegates creation
+    ParkingLot o-- PricingStrategy : composes
+    ParkingLot ..> DomainEvent : publishes
+    AppGUI ..> ParkingLot : subscribes to events
+```
+
+*Source: [`../../uml_diagrams/refactored_overview_diagram.mmd`](../../uml_diagrams/refactored_overview_diagram.mmd)*
+
+#### b) Vehicle & Factory Hierarchy
+This diagram focuses on the inheritance tree and the Factory Method pattern.
+
+```mermaid
+classDiagram
     class VehicleFactory {
         +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)
     }
@@ -185,7 +222,6 @@ classDiagram
     ElectricVehicle <|-- ElectricCar
     ElectricVehicle <|-- ElectricBike
 
-    ParkingLot ..> VehicleFactory : delegates to
     VehicleFactory ..> Car : instantiates
     VehicleFactory ..> Truck : instantiates
     VehicleFactory ..> Motorcycle : instantiates
@@ -193,29 +229,54 @@ classDiagram
     VehicleFactory ..> ElectricCar : instantiates
     VehicleFactory ..> ElectricBike : instantiates
 
-    class PricingStrategy {
-        <<interface>>
-        +calculate_fee(vehicle)
-    }
-    class FlatRateStrategy
-    class EVPremiumStrategy
-    class VehicleTypeStrategy
-    PricingStrategy <|-- FlatRateStrategy
-    PricingStrategy <|-- EVPremiumStrategy
-    PricingStrategy <|-- VehicleTypeStrategy
+    note for Vehicle "Dynamic type property derived from class name"
+    note for ElectricCar "Overrides type as 'Car' for parking categorization"
+    note for ElectricBike "Overrides type as 'Motorcycle' for parking categorization"
+```
 
-    ParkingLot o-- PricingStrategy : strategy
+*Source: [`../../uml_diagrams/refactored_vehicle_factory_diagram.mmd`](../../uml_diagrams/refactored_vehicle_factory_diagram.mmd)*
+
+#### c) Event-Driven Architecture
+This diagram focuses on the Observer / Event-Driven pattern and the typed domain event hierarchy.
+
+```mermaid
+classDiagram
+    class ParkingLot {
+        -list event_observers
+        +add_event_observer(observer)
+        +remove_event_observer(observer)
+        +publish(event)
+    }
 
     class DomainEvent {
         <<base class>>
         +datetime timestamp
     }
-    class LotInitializedEvent
-    class VehicleParkedEvent
-    class VehicleDepartedEvent
-    class VehicleParkFailedEvent
-    class VehicleDepartFailedEvent
-    class PricingStrategyChangedEvent
+    class LotInitializedEvent {
+        +int capacity
+        +int ev_capacity
+        +int level
+    }
+    class VehicleParkedEvent {
+        +Vehicle vehicle
+        +int slot_id
+        +bool is_ev
+    }
+    class VehicleDepartedEvent {
+        +Vehicle vehicle
+        +int slot_id
+        +bool is_ev
+        +float fee
+    }
+    class VehicleParkFailedEvent {
+        +string reason
+    }
+    class VehicleDepartFailedEvent {
+        +string reason
+    }
+    class PricingStrategyChangedEvent {
+        +string strategy_name
+    }
 
     DomainEvent <|-- LotInitializedEvent
     DomainEvent <|-- VehicleParkedEvent
@@ -226,32 +287,56 @@ classDiagram
 
     ParkingLot ..> DomainEvent : publishes
 
-    ParkingLot "1" *-- "*" Vehicle : stores in slots and evSlots
-
-    class AppGUI {
-        -ParkingLot parkinglot
-        -Tk root
-        +create_widgets()
-        +makeLot()
-        +parkCar()
-        +removeCar()
-        +write_output(text)
-        -_handle_event(event)
-    }
-    note for AppGUI "Also contains UI handlers for search, status, charge status, and randomized sample input."
-    class TkinterWidgets {
-        <<GUI state>>
-        +StringVar inputs
-        +IntVar flags
-        +Text output
-        +Text trace
-    }
-    AppGUI --> ParkingLot : uses
-    AppGUI --> TkinterWidgets : owns
-    ParkingLot ..> AppGUI : notifies event observer callback
+    note for ParkingLot "Synchronous in-process observer list. Future: async message broker"
+    note for DomainEvent "Strongly typed events replace brittle string traces"
 ```
 
-*Source: [`../../uml_diagrams/refactored_class_diagram.mmd`](../../uml_diagrams/refactored_class_diagram.mmd)*
+*Source: [`../../uml_diagrams/refactored_event_system_diagram.mmd`](../../uml_diagrams/refactored_event_system_diagram.mmd)*
+
+#### d) Pricing Strategy
+This diagram focuses on the Strategy pattern for pluggable fee calculation.
+
+```mermaid
+classDiagram
+    class ParkingLot {
+        +set_pricing_strategy(strategy)
+        +leave(slotid, ev)
+    }
+    note for ParkingLot "Delegates fee calculation to strategy at departure"
+
+    class PricingStrategy {
+        <<interface>>
+        +calculate_fee(vehicle)
+    }
+    class FlatRateStrategy {
+        +float rate
+        +calculate_fee(vehicle)
+    }
+    class EVPremiumStrategy {
+        +float base_rate
+        +float ev_surcharge
+        +calculate_fee(vehicle)
+    }
+    class VehicleTypeStrategy {
+        +float motorcycle_rate
+        +float car_rate
+        +float truck_bus_rate
+        +float ev_surcharge
+        +calculate_fee(vehicle)
+    }
+
+    PricingStrategy <|-- FlatRateStrategy
+    PricingStrategy <|-- EVPremiumStrategy
+    PricingStrategy <|-- VehicleTypeStrategy
+
+    ParkingLot o-- PricingStrategy : strategy
+
+    note for FlatRateStrategy "Fixed fee regardless of vehicle type"
+    note for EVPremiumStrategy "Base rate + EV surcharge via duck typing"
+    note for VehicleTypeStrategy "Differentiated by vehicle.type + EV surcharge"
+```
+
+*Source: [`../../uml_diagrams/refactored_pricing_strategy_diagram.mmd`](../../uml_diagrams/refactored_pricing_strategy_diagram.mmd)*
 
 ### 2. Behavioral Diagram (Sequence Diagram - Parking a Car)
 This sequence diagram shows the refactored flow. The GUI now interacts with the `ParkingLot`, which validates the request, checks for duplicate registrations, and requests a vehicle instance from `VehicleFactory`. The GUI is responsible for displaying the returned result, while trace messages are delivered through the registered observer callback.

@@ -1,0 +1,46 @@
+classDiagram
+    class ParkingLot {
+        +createParkingLot(capacity, evcapacity, level)
+        +park(regnum, make, model, color, ev, motor, vehicle_type)
+        +leave(slotid, ev)
+        +status()
+        +chargeStatus()
+        +set_pricing_strategy(strategy)
+        +add_event_observer(observer)
+        +remove_event_observer(observer)
+        +publish(event)
+    }
+    note for ParkingLot "Owns slot state, queries, and delegates to collaborators"
+
+    class AppGUI {
+        +create_widgets()
+        +makeLot()
+        +parkCar()
+        +removeCar()
+        +write_output(text)
+        -_handle_event(event)
+    }
+    note for AppGUI "Owns Tkinter state and subscribes to domain events"
+
+    class VehicleFactory {
+        +create_vehicle(...)
+    }
+    note for VehicleFactory "Centralizes vehicle creation"
+
+    class PricingStrategy {
+        <<interface>>
+        +calculate_fee(vehicle)
+    }
+    note for PricingStrategy "Pluggable pricing models"
+
+    class DomainEvent {
+        <<base>>
+        +datetime timestamp
+    }
+    note for DomainEvent "Typed events for audit and integration"
+
+    AppGUI --> ParkingLot : uses
+    ParkingLot ..> VehicleFactory : delegates creation
+    ParkingLot o-- PricingStrategy : composes
+    ParkingLot ..> DomainEvent : publishes
+    AppGUI ..> ParkingLot : subscribes to events
