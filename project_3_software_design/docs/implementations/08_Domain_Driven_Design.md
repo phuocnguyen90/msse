@@ -13,54 +13,109 @@ Based on the requirements and the technical interview with Michael, the Technica
 * **Supporting Subdomains:** 
     * Reservations and Space Inventory
     * Customer Accounts & Memberships
+    * Pricing & Tariff Management (corporate rules with facility-level overrides)
     * Settlement & Clearing (3rd-party vendor revenue sharing)
 * **Generic Subdomains:** 
-    * Billing & Payments (Outsourced processing but internal rules)
+    * Payment Processing (external gateway integration)
     * Reporting, Finance, and Audits
     * Maintenance & Asset Management
+
+This classification follows Michael's interview responses: payment processing itself is not EasyParkPlus's competitive advantage and may be outsourced, but pricing rules, validations, EV tariffs, idle-fee rules, and facility overrides remain internally owned. Michael also explicitly identified Settlement/Clearing as a separate operational domain for third-party charger and landlord revenue sharing.
 
 ---
 
 ## 2. Bounded Contexts
 
-Based on the subdomains, we can define the following **Bounded Contexts** to compartmentalize the system:
+Based on the subdomains, we can define the following **Bounded Contexts** to compartmentalize the system. The first diagram shows the context groups at a high level; the smaller diagrams below show the most important relationships without overloading the main view.
 
 ```mermaid
 flowchart TD
     subgraph "Core Domain"
-        APC["Access & Parking Context"]
+        APC["Facility / Parking Context"]
         EVC["EV Charging Context"]
     end
 
     subgraph "Supporting Subdomains"
         CAC["Customer & Account Context"]
         RIC["Reservation & Inventory Context"]
+        PTC["Pricing & Tariff Context"]
         SCC["Settlement & Clearing Context"]
     end
 
     subgraph "Generic Subdomains"
-        BPC["Billing & Payment Context"]
+        PAY["Payment Processing Context"]
+        RAF["Reporting / Audit Context"]
+        MAC["Maintenance Context"]
     end
+```
 
-    APC -->|"Generates Parking Sessions"| BPC
-    EVC -->|"Generates Charging Sessions"| BPC
-    APC -->|"Validates Entry / Updates Capacity"| RIC
-    RIC -->|"Confirms Capacity Updates"| APC
+### Operational Context Relationships
+
+This diagram shows the contexts involved in vehicle entry/exit, charging, pricing, and payment.
+
+```mermaid
+flowchart LR
+    APC["Facility / Parking"]
+    EVC["EV Charging"]
+    CAC["Customer & Account"]
+    PTC["Pricing & Tariff"]
+    PAY["Payment Processing"]
+
+    APC -->|"Generates Parking Sessions"| PTC
+    EVC -->|"Generates Charging Sessions"| PTC
+    PTC -->|"Produces Rated Charges"| PAY
+    PAY -->|"Payment Results"| APC
+    PAY -->|"Payment Results"| EVC
     CAC -->|"Validates Subscriptions/Accounts"| APC
     CAC -->|"Validates Subscriptions/Accounts"| EVC
-    BPC -->|"Transfers Session Gross/Net Data"| SCC
-    RIC -->|"Books Time Slots"| BPC
+```
+
+### Reservation and Capacity Relationships
+
+This diagram clarifies the ownership boundary between live facility occupancy and future reservation holds.
+
+```mermaid
+flowchart LR
+    APC["Facility / Parking"]
+    RIC["Reservation & Inventory"]
+    CAC["Customer & Account"]
+
+    APC -->|"Publishes Live Occupancy"| RIC
+    RIC -->|"Holds Future Capacity"| APC
+    CAC -->|"Customer / Subscription Data"| RIC
+```
+
+### Settlement, Reporting, and Maintenance Relationships
+
+This diagram shows supporting and generic contexts that consume operational, charging, tariff, and payment data.
+
+```mermaid
+flowchart LR
+    APC["Facility / Parking"]
+    EVC["EV Charging"]
+    PTC["Pricing & Tariff"]
+    PAY["Payment Processing"]
+    SCC["Settlement & Clearing"]
+    RAF["Reporting / Audit"]
+    MAC["Maintenance"]
+
+    PAY -->|"Gross Transaction Data"| SCC
+    PTC -->|"Tariff/Line-Item Data"| SCC
+    APC -->|"Operational Events"| RAF
+    PAY -->|"Payment Events"| RAF
+    EVC -->|"Charging Events"| RAF
+    EVC -->|"Charger Events"| MAC
 ```
 
 > [!IMPORTANT]
-> **Offline Autonomy:** The **Access & Parking Context** and **EV Charging Context** must be deployed locally at the facility level (Edge Nodes) as well as centrally (Cloud), ensuring that local operations (gates opening, chargers starting) continue when the internet connection drops.
+> **Offline Autonomy:** The **Facility / Parking Context** and **EV Charging Context** require both edge and cloud capabilities. At the edge, they must continue local operations such as gate decisions, ticketing, occupancy tracking, and charging-session continuation when internet connectivity drops. In the cloud, they synchronize operational records, support cross-facility visibility, and feed reporting and settlement.
 
 ---
 
 ## 3. Bounded Context Definitions & Ubiquitous Language
 
-### A. Access & Parking Context
-* **Responsibilities:** Handling vehicle entry/exit, tracking active parking sessions, local capacity tracking, and physical gate control. Must operate independently during internet outages.
+### A. Facility / Parking Context
+* **Responsibilities:** Handling vehicle entry/exit, tracking active parking sessions, local physical occupancy, facility configuration, and physical gate control. Must operate independently during internet outages.
 * **Ubiquitous Language:** Parking Session, Ticket, Entry Gate, Exit Gate, License Plate Recognition (LPR), Capacity Buffer, Offline Mode.
 
 ### B. EV Charging Context
@@ -71,17 +126,31 @@ flowchart TD
 * **Responsibilities:** Managing global user accounts, monthly subscriptions, saved payment methods, and vehicle profiles.
 * **Ubiquitous Language:** Customer Account, Monthly Parking Contract, Saved Payment Method, Vehicle Profile, Subscriber.
 
-### D. Billing & Payment Context
-* **Responsibilities:** Applying pricing rules, calculating combined fees (parking duration + EV usage + idle fees), processing credit card transactions, and generating unified invoices.
-* **Ubiquitous Language:** Tariff Rule, Unified Invoice, Idle Fee, Payment Transaction, Base Rate, Dynamic Pricing.
+### D. Payment Processing / Billing Context
+* **Responsibilities:** Creating unified invoices, coordinating payment authorization/capture with external payment providers, and recording payment results. Payment provider integration is generic, while internal fee rules come from the Pricing & Tariff Context.
+* **Ubiquitous Language:** Unified Invoice, Payment Transaction, Authorization, Capture, Refund, Payment Method Token, Receipt.
 
 ### E. Reservation & Inventory Context
-* **Responsibilities:** Central management of advanced bookings and coordinating capacity buffers with facilities to prevent overbooking while allowing drive-up traffic.
+* **Responsibilities:** Central management of future bookings and reservation capacity holds. It consumes live occupancy from Facility / Parking but owns reservation windows, priority rules, and capacity buffers for future demand.
 * **Ubiquitous Language:** Reservation, Guaranteed Spot, Capacity Buffer, Degraded Mode, Yield Management.
 
-### F. Settlement & Clearing Context
+### F. Pricing & Tariff Context
+* **Responsibilities:** Managing corporate pricing rules, EV tariffs, idle-fee rules, facility-level overrides, regulatory constraints, and tariff snapshots used for offline execution.
+* **Ubiquitous Language:** Tariff Rule, Base Rate, Charging Rate, Idle Fee Rule, Facility Override, Regulatory Constraint, Effective Period.
+
+### G. Settlement & Clearing Context
 * **Responsibilities:** Reconciling financial transactions and splitting revenue between EasyParkPlus, 3rd party EV charger operators, and landlords.
 * **Ubiquitous Language:** Revenue Share, Vendor Invoice, Net Amount, Gross Amount, Reconciliation, Ledger Entry.
+
+### H. Reporting / Audit and Maintenance Contexts
+* **Responsibilities:** Reporting and audit consume parking, payment, and charging events for finance and operational analytics. Maintenance consumes charger and equipment events for repair workflows.
+* **Ubiquitous Language:** Audit Trail, Utilization Report, Fault Event, Maintenance Ticket, Asset Health.
+
+These contexts are identified because Michael listed reporting, finance, audits, maintenance, enforcement, and asset management as operational areas. They are not modeled in depth here because the project requirement asks for basic domain models for parking management and EV charging, with supporting models where they directly affect those workflows.
+
+### Context-to-Service Mapping Note
+
+The microservices architecture uses service names that are intentionally close to these bounded contexts. The **Facility / Parking Context** maps to the **Facility / Parking Service**. The **EV Charging Context** maps to the **EV Charging Service**. The **Reservation & Inventory**, **Customer & Account**, and **Settlement & Clearing** contexts map directly to their corresponding services. The **Pricing & Tariff Context** is shown as a distinct DDD boundary because Michael identified corporate pricing, facility overrides, EV tariffs, and regulatory constraints as internally owned rules; in the preliminary architecture it may be implemented as a pricing component inside the Billing / Payment workflow before becoming a standalone service.
 
 ---
 
@@ -89,7 +158,7 @@ flowchart TD
 
 Here is a preliminary structural model for the core contexts and the supporting contexts that interact directly with parking and EV charging.
 
-### Access & Parking Domain Model
+### Facility / Parking Domain Model
 * **Aggregate Root: `ParkingSession`**
     * **Properties:** SessionID, FacilityID, EntryTime, ExitTime, Status (Active, PaymentPending, Completed, Cancelled), SessionType (Transient, Reservation, MonthlySubscriber), OfflineCaptured flag
     * **Entities:** `Ticket`, `VehicleSnapshot`, `AccessDecision`
@@ -99,7 +168,7 @@ Here is a preliminary structural model for the core contexts and the supporting 
     * **Properties:** FacilityID, TotalCapacity, AvailableCapacity, ReservedCapacityBuffer, OperatingMode (Online, Offline, Degraded)
     * **Entities:** `ParkingSpot`, `Gate`, `FacilityRuleOverride`
     * **Value Objects:** `CapacityCount`, `SpotType` (Regular, EV, Accessible, Reserved), `GateStatus`
-    * **Invariants:** Reservations have priority over subscribers, and subscribers have priority over drive-up traffic during degraded/offline operation; drive-up entries must not consume the reserved capacity buffer.
+    * **Invariants:** Facility / Parking owns live physical occupancy counts and gate decisions. Drive-up entries must not consume the reserved capacity buffer that Reservation & Inventory has allocated for future reservations.
 * **Entity: `Facility`**
     * **Properties:** FacilityID, City, Address, LocalTimezone, AccessMechanism (BoomGate, LPR, Hybrid)
 
@@ -122,23 +191,27 @@ Here is a preliminary structural model for the core contexts and the supporting 
 * **Aggregate Root: `Reservation`**
     * **Properties:** ReservationID, CustomerID, FacilityID, ReservedWindow, SpotTypeRequested, Status (Requested, Confirmed, Honored, NoShow, Cancelled)
     * **Value Objects:** `ReservationPriority`, `CapacityHold`, `ReservationWindow`
-    * **Invariants:** Central reservations can continue while a facility is offline, but capacity buffers limit overbooking; conflicts after reconnection are resolved by priority: reservations, then subscriptions, then drive-up traffic.
+    * **Invariants:** Reservation & Inventory owns future capacity holds, not live physical occupancy. Central reservations can continue while a facility is offline, but capacity buffers limit overbooking; conflicts after reconnection are resolved by priority: reservations, then subscriptions, then drive-up traffic.
 
-### Billing, Pricing & Settlement Domain Model
+### Payment Processing / Billing Domain Model
 * **Aggregate Root: `UnifiedInvoice`**
     * **Properties:** InvoiceID, CustomerID, ParkingSessionID, ChargingSessionID, TotalAmount, Status (Pending, Paid, Failed, Adjusted)
-    * **Entities:** `PaymentTransaction`, `SettlementAllocation`
-    * **Value Objects:** `ChargeLineItem` (Parking Fee, Charging Fee, Idle Fee), `TariffRule`, `Money`, `TaxBreakdown`
-    * **Invariants:** Parking and charging may be presented as one receipt while preserving separate line items for tax, refunds, and settlement.
+    * **Entities:** `PaymentTransaction`
+    * **Value Objects:** `ChargeLineItem` (Parking Fee, Charging Fee, Idle Fee), `Money`, `TaxBreakdown`, `PaymentMethodToken`
+    * **Invariants:** Parking and charging may be presented as one receipt while preserving separate line items for tax, refunds, and settlement. External payment capture can be delegated to a payment gateway, but EasyParkPlus keeps the invoice and transaction record.
+
+### Pricing & Tariff Domain Model
 * **Aggregate Root: `TariffPolicy`**
     * **Properties:** PolicyID, FacilityID, EffectivePeriod, Source (Corporate, FacilityOverride, Regulatory)
     * **Value Objects:** `ParkingRate`, `ChargingRate`, `IdleFeeRule`, `OverrideLimit`
-    * **Rule:** Corporate operations own the default source of truth, while facility managers can apply controlled local overrides within approved limits.
+    * **Rule:** Corporate operations own the default source of truth, while facility managers can apply controlled local overrides within approved limits. This reflects Michael's interview response that core pricing strategy is centrally defined but can have bounded local flexibility.
+
+### Settlement & Clearing Domain Model
 * **Aggregate Root: `SettlementBatch`**
     * **Properties:** BatchID, SettlementPeriod, Status, VendorID, FacilityID
     * **Entities:** `LedgerEntry`, `VendorInvoiceMatch`, `Adjustment`
     * **Value Objects:** `RevenueShareRule`, `GrossAmount`, `NetAmount`
-    * **Rule:** Third-party charger revenue, landlord shares, idle fees, refunds, and failed-session adjustments must be reconcilable from session-level records.
+    * **Rule:** Third-party charger revenue, landlord shares, idle fees, refunds, and failed-session adjustments must be reconcilable from session-level records. This is separate from Billing & Payment because Michael explicitly identified vendor/landlord clearing as a dedicated operational domain.
 
 > [!NOTE]
 > The `UnifiedInvoice` acts as the financial sink where the `ParkingSession` and `ChargingSession` are combined to present a single payment request to the driver, satisfying the business requirement for a unified customer experience while preserving separate tracking for settlement.
