@@ -1,0 +1,66 @@
+classDiagram
+    class ParkingLot {
+        +int capacity
+        +int evCapacity
+        +int level
+        +list slots
+        +list evSlots
+        -list trace_observers
+        +createParkingLot(...)
+        +park(regnum, make, model, color, ev, motor, vehicle_type)
+        +leave(slotid, ev)
+        +add_trace_observer(observer)
+        +remove_trace_observer(observer)
+    }
+    
+    class VehicleFactory {
+        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)$ Vehicle
+    }
+    
+    class Vehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+        +string type
+    }
+    class Car
+    class Truck
+    class Motorcycle
+    class Bus
+    class ElectricVehicle {
+        +int charge
+        +setCharge(charge)
+        +getCharge()
+    }
+    class ElectricCar
+    class ElectricBike
+    
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
+    Vehicle <|-- ElectricVehicle
+    ElectricVehicle <|-- ElectricCar
+    ElectricVehicle <|-- ElectricBike
+    
+    ParkingLot ..> VehicleFactory : delegates to
+    VehicleFactory ..> Car : instantiates
+    VehicleFactory ..> Truck : instantiates
+    VehicleFactory ..> Motorcycle : instantiates
+    VehicleFactory ..> Bus : instantiates
+    VehicleFactory ..> ElectricCar : instantiates
+    VehicleFactory ..> ElectricBike : instantiates
+    
+    ParkingLot "1" *-- "*" Vehicle : stores in slots
+    
+    class AppGUI {
+        -ParkingLot parkinglot
+        -Tk root
+        +create_widgets()
+        +makeLot()
+        +parkCar()
+        +removeCar()
+    }
+    AppGUI --> ParkingLot : uses
+    ParkingLot ..> AppGUI : notifies trace observer

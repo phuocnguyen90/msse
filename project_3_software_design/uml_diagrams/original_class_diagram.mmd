@@ -1,0 +1,65 @@
+classDiagram
+    class ParkingLot {
+        +int capacity
+        +int evCapacity
+        +int level
+        +list slots
+        +list evSlots
+        +createParkingLot(capacity, evcapacity, level)
+        +park(regnum, make, model, color, ev, motor)
+        +leave(slotid, ev)
+        +edit(slotid, regnum, make, model, color, ev)
+        +status()
+    }
+    
+    class Vehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+        +getMake()
+        +getModel()
+        +getColor()
+        +getRegNum()
+    }
+    class Car {
+        +getType()
+    }
+    class Truck {
+        +getType()
+    }
+    class Motorcycle {
+        +getType()
+    }
+    class Bus {
+        +getType()
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
+    
+    class ElectricVehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+        +int charge
+        +getCharge()
+        +setCharge(charge)
+    }
+    class ElectricCar {
+        +getType()
+    }
+    class ElectricBike {
+        +getType()
+    }
+    
+    %% Broken inheritance in original code!
+    ElectricVehicle <.. ElectricCar : merely calls __init__
+    ElectricVehicle <.. ElectricBike : merely calls __init__
+    
+    ParkingLot --> Vehicle : creates & stores
+    ParkingLot --> ElectricVehicle : creates & stores
+    ParkingLot --> ElectricCar : creates directly
+    ParkingLot --> ElectricBike : creates directly

@@ -137,7 +137,6 @@ class TestVehicleProperties(unittest.TestCase):
 
 class TestParkingLot(unittest.TestCase):
     def setUp(self):
-        ParkingLot._instance = None
         self.lot = ParkingLot()
 
     def test_parking_lot_instances_are_independent(self):
@@ -374,35 +373,32 @@ class TestParkingLot(unittest.TestCase):
         def mock_trace(message):
             traced_messages.append(message)
 
-        ParkingLot.set_trace_callback(mock_trace)
-        ParkingLot._instance = None
         lot = ParkingLot()
+        lot.add_trace_observer(mock_trace)
         lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         lot.park("REG1", "Honda", "Civic", "Red", False, False)
 
         self.assertGreater(len(traced_messages), 0)
         self.assertTrue(any("createParkingLot" in msg for msg in traced_messages))
         self.assertTrue(any("park" in msg for msg in traced_messages))
-        self.assertTrue(any("Singleton" in msg for msg in traced_messages))
-
-        ParkingLot.set_trace_callback(None)
 
     def test_tracing_leave(self):
         traced_messages = []
         def mock_trace(message):
             traced_messages.append(message)
 
-        ParkingLot.set_trace_callback(mock_trace)
+        self.lot.add_trace_observer(mock_trace)
         self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.leave(1, False)
 
         self.assertTrue(any("leave" in msg for msg in traced_messages))
 
-        ParkingLot.set_trace_callback(None)
+    def test_get_slot_num_from_make_and_model(self):
+        self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
+        self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
+        self.lot.park("EV1", "Tesla", "Model S", "White", True, False)
 
-
-        # Test restored make/model query behavior for regular and EV slots
         honda_slots = self.lot.getSlotNumFromMake("Honda", False)
         self.assertEqual(honda_slots, ["1"])
 

@@ -1,0 +1,15 @@
+sequenceDiagram
+    actor User
+    participant GUI as Tkinter GUI (Global Scope)
+    participant PL as ParkingLot
+    participant EC as ElectricCar
+    
+    User->>GUI: Click "Park Car" (is_ev=1, motor=0)
+    GUI->>PL: park(regnum, make, model, color, 1, 0)
+    PL->>PL: check capacity (numOfOccupiedEvSlots < evCapacity)
+    PL->>PL: getEmptyEvSlot()
+    PL->>EC: new ElectricCar(regnum, make, model, color)
+    EC-->>PL: instance
+    PL->>PL: evSlots[slotid] = instance
+    PL->>GUI: tfield.insert("Allocated slot...")
+    PL-->>GUI: return slotid

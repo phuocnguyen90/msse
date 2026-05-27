@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor User
+    participant GUI as AppGUI
+    participant PL as ParkingLot
+    participant VF as VehicleFactory
+    participant EC as ElectricCar
+    
+    User->>GUI: Click "Park Car" (is_ev=1, motor=0)
+    GUI->>PL: park(regnum, make, model, color, 1, 0, vehicle_type=None)
+    PL->>PL: check capacity (numOfOccupiedEvSlots < evCapacity)
+    PL->>PL: getEmptyEvSlot()
+    PL->>VF: create_vehicle(is_ev=True, is_motorcycle=False, ...)
+    VF->>EC: new ElectricCar(...)
+    EC-->>VF: instance
+    VF-->>PL: polymorphic Vehicle instance
+    PL->>PL: evSlots[slotid] = instance
+    PL-->>GUI: return slotid
+    GUI->>GUI: write_output("Allocated slot number: [slotid]")
+    GUI-->>User: Display output
