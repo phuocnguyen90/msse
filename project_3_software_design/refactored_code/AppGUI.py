@@ -157,6 +157,11 @@ class AppGUI:
             capacity = int(self.num_value.get())
             ev_cap = int(self.ev_value.get())
             level = int(self.level_value.get())
+            
+            if self.parkinglot.capacity > 0 or self.parkinglot.evCapacity > 0:
+                self.parkinglot = ParkingLot()
+                self.parkinglot.add_event_observer(self._handle_event)
+                
             self.parkinglot.createParkingLot(capacity, ev_cap, level)
             self.write_output(f"Created a parking lot with {capacity} regular slots and {ev_cap} EV slots on level: {level}\n")
         except ValueError as e:
