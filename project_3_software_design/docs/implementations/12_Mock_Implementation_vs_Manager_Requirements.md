@@ -2,7 +2,7 @@
 
 The current mock implementation serves as a foundational prototype. While it does not include the full microservices architecture yet, it intentionally addresses several core business rules and operational requirements raised by Michael (Technical Manager) in the interview. 
 
-Here is how the mock implementation (`ParkingManager.py`, `AppGUI.py`, and `VehicleFactory.py`) conceptually maps to the real-world problems discussed:
+Here is how the mock implementation ([`refactored_code/ParkingManager.py`](../../refactored_code/ParkingManager.py), [`refactored_code/AppGUI.py`](../../refactored_code/AppGUI.py), and [`refactored_code/VehicleFactory.py`](../../refactored_code/VehicleFactory.py)) conceptually maps to the real-world problems discussed:
 
 ## 1. EV Charging Station Management (New Domain)
 
