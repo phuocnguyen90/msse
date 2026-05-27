@@ -1,0 +1,24 @@
+classDiagram
+    class ParkingLot {
+        +createParkingLot(capacity, evcapacity, level)
+        +park(regnum, make, model, color, ev, motor)
+        +leave(slotid, ev)
+        +edit(slotid, regnum, make, model, color, ev)
+        +parkCar()
+        +removeCar()
+        +makeLot()
+    }
+    note for ParkingLot "Domain logic, GUI callbacks, query helpers, and Tkinter output all in one class"
+
+    class TkinterGlobals {
+        <<global module state>>
+        +Tk root
+        +StringVar inputs
+        +IntVar flags
+        +Text tfield
+        +main()
+    }
+    note for TkinterGlobals "Global variables at module level; ParkingLot reads/writes directly"
+
+    TkinterGlobals --> ParkingLot : creates instance and binds buttons
+    ParkingLot ..> TkinterGlobals : reads input vars and writes tfield

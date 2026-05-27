@@ -10,19 +10,16 @@ To keep the diagrams readable, the class diagrams show the methods that explain 
 
 ## Part 1: Original Codebase
 
-### 1. Structural Diagram (Class Diagram)
-This diagram illustrates the original, tightly coupled structure. Notice the broken inheritance chain where `ElectricCar` and `ElectricBike` call `ElectricVehicle.__init__()` but do not actually extend `ElectricVehicle`. The legacy `ParkingLot` also contains GUI callback methods and directly instantiates the supported concrete vehicle classes used by the manager.
+### 1. Structural Diagrams (Class Diagrams)
+
+The original architecture is shown as a set of focused diagrams, each highlighting a specific design problem.
+
+#### a) High-Level System Overview
+This diagram shows the monolithic structure: `ParkingLot` contains domain logic, GUI callbacks, query helpers, and direct Tkinter output code all in one class. Tkinter state lives as global module variables.
 
 ```mermaid
 classDiagram
     class ParkingLot {
-        +int capacity
-        +int evCapacity
-        +int level
-        +int numOfOccupiedSlots
-        +int numOfOccupiedEvSlots
-        +list slots
-        +list evSlots
         +createParkingLot(capacity, evcapacity, level)
         +park(regnum, make, model, color, ev, motor)
         +leave(slotid, ev)
@@ -31,7 +28,7 @@ classDiagram
         +removeCar()
         +makeLot()
     }
-    note for ParkingLot "Also contains status, charge-status, slot search, query, and Tkinter output helper methods."
+    note for ParkingLot "Domain logic, GUI callbacks, query helpers, and Tkinter output all in one class"
 
     class TkinterGlobals {
         <<global module state>>
@@ -41,7 +38,19 @@ classDiagram
         +Text tfield
         +main()
     }
+    note for TkinterGlobals "Global variables at module level; ParkingLot reads/writes directly"
 
+    TkinterGlobals --> ParkingLot : creates instance and binds buttons
+    ParkingLot ..> TkinterGlobals : reads input vars and writes tfield
+```
+
+*Source: [`../../uml_diagrams/original_overview_diagram.mmd`](../../uml_diagrams/original_overview_diagram.mmd)*
+
+#### b) Broken Inheritance
+This diagram isolates the inheritance problem: `ElectricCar` and `ElectricBike` call `ElectricVehicle.__init__()` but do not formally declare `class ElectricCar(ElectricVehicle)`. They also duplicate getter methods already present in `Vehicle`.
+
+```mermaid
+classDiagram
     class Vehicle {
         +string regnum
         +string make
@@ -84,18 +93,51 @@ classDiagram
     ElectricVehicle <.. ElectricCar : calls __init__ only
     ElectricVehicle <.. ElectricBike : calls __init__ only
 
-    TkinterGlobals --> ParkingLot : creates instance and binds buttons
-    ParkingLot ..> TkinterGlobals : reads input vars and writes tfield
-    ParkingLot --> Car : creates directly
-    ParkingLot --> Motorcycle : creates directly
-    ParkingLot --> ElectricCar : creates directly
-    ParkingLot --> ElectricBike : creates directly
-    ParkingLot "1" *-- "*" Vehicle : regular slots store Car/Motorcycle
-    ParkingLot "1" *-- "*" ElectricCar : EV slots may store
-    ParkingLot "1" *-- "*" ElectricBike : EV slots may store
+    note for ElectricCar "Does NOT declare class ElectricCar(ElectricVehicle)"
+    note for ElectricBike "Does NOT declare class ElectricBike(ElectricVehicle)"
+    note for ElectricVehicle "Duplicate getters identical to Vehicle; no inheritance link"
 ```
 
-*Source: [`../../uml_diagrams/original_class_diagram.mmd`](../../uml_diagrams/original_class_diagram.mmd)*
+*Source: [`../../uml_diagrams/original_broken_inheritance_diagram.mmd`](../../uml_diagrams/original_broken_inheritance_diagram.mmd)*
+
+#### c) Direct Instantiation
+This diagram isolates the concrete-class coupling: `ParkingLot` directly instantiates `Car`, `Motorcycle`, `ElectricCar`, and `ElectricBike` inside deeply nested `if/else` logic. There is no creation abstraction.
+
+```mermaid
+classDiagram
+    class ParkingLot {
+        +park(regnum, make, model, color, ev, motor)
+        +leave(slotid, ev)
+    }
+    note for ParkingLot "Deeply nested if/else inside park() to choose concrete class"
+
+    class Car {
+        +getType()
+    }
+    class Motorcycle {
+        +getType()
+    }
+    class ElectricCar {
+        +getType()
+    }
+    class ElectricBike {
+        +getType()
+    }
+
+    ParkingLot --> Car : new Car(...)
+    ParkingLot --> Motorcycle : new Motorcycle(...)
+    ParkingLot --> ElectricCar : new ElectricCar(...)
+    ParkingLot --> ElectricBike : new ElectricBike(...)
+
+    ParkingLot "1" *-- "*" Car : stores in regular slots
+    ParkingLot "1" *-- "*" Motorcycle : stores in regular slots
+    ParkingLot "1" *-- "*" ElectricCar : stores in EV slots
+    ParkingLot "1" *-- "*" ElectricBike : stores in EV slots
+
+    note for ParkingLot "No creation abstraction; directly references every concrete class"
+```
+
+*Source: [`../../uml_diagrams/original_direct_instantiation_diagram.mmd`](../../uml_diagrams/original_direct_instantiation_diagram.mmd)*
 
 ### 2. Behavioral Diagram (Sequence Diagram - Parking a Car)
 This sequence diagram shows the flow of parking an Electric Car in the original code. The Tkinter button is bound to `ParkingLot.parkCar()`, which reads global Tkinter variables, calls `ParkingLot.park()`, and then writes the result to the global text field. The `ParkingLot` class directly handles the conditional logic to figure out which concrete class (`ElectricCar`, `ElectricBike`, `Car`, `Motorcycle`) to instantiate.

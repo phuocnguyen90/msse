@@ -1,0 +1,46 @@
+classDiagram
+    class Vehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+    }
+    class Car {
+        +getType()
+    }
+    class Truck {
+        +getType()
+    }
+    class Motorcycle {
+        +getType()
+    }
+    class Bus {
+        +getType()
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
+
+    class ElectricVehicle {
+        +string regnum
+        +string make
+        +string model
+        +string color
+        +int charge
+        +getCharge()
+        +setCharge(charge)
+    }
+    class ElectricCar {
+        +getType()
+    }
+    class ElectricBike {
+        +getType()
+    }
+
+    ElectricVehicle <.. ElectricCar : calls __init__ only
+    ElectricVehicle <.. ElectricBike : calls __init__ only
+
+    note for ElectricCar "Does NOT declare class ElectricCar(ElectricVehicle)"
+    note for ElectricBike "Does NOT declare class ElectricBike(ElectricVehicle)"
+    note for ElectricVehicle "Duplicate getters identical to Vehicle; no inheritance link"

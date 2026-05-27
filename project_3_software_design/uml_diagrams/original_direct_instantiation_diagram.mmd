@@ -1,0 +1,31 @@
+classDiagram
+    class ParkingLot {
+        +park(regnum, make, model, color, ev, motor)
+        +leave(slotid, ev)
+    }
+    note for ParkingLot "Deeply nested if/else inside park() to choose concrete class"
+
+    class Car {
+        +getType()
+    }
+    class Motorcycle {
+        +getType()
+    }
+    class ElectricCar {
+        +getType()
+    }
+    class ElectricBike {
+        +getType()
+    }
+
+    ParkingLot --> Car : new Car(...)
+    ParkingLot --> Motorcycle : new Motorcycle(...)
+    ParkingLot --> ElectricCar : new ElectricCar(...)
+    ParkingLot --> ElectricBike : new ElectricBike(...)
+
+    ParkingLot "1" *-- "*" Car : stores in regular slots
+    ParkingLot "1" *-- "*" Motorcycle : stores in regular slots
+    ParkingLot "1" *-- "*" ElectricCar : stores in EV slots
+    ParkingLot "1" *-- "*" ElectricBike : stores in EV slots
+
+    note for ParkingLot "No creation abstraction; directly references every concrete class"
