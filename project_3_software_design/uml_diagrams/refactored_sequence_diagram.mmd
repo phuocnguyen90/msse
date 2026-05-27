@@ -4,22 +4,21 @@ sequenceDiagram
     participant PL as ParkingLot
     participant VF as VehicleFactory
     participant EC as ElectricCar
-    participant Trace as Trace Observer
+    participant EventBus as Event Observer
     
     User->>GUI: Click "Park Car" (is_ev=1, motor=0)
     GUI->>PL: park(regnum, make, model, color, 1, 0, vehicle_type=None)
-    PL->>Trace: _trace("park(...)")
     PL->>PL: validate registration number
     PL->>PL: getSlotNumFromRegNum(regnum, True)
     PL->>PL: getSlotNumFromRegNum(regnum, False)
     PL->>PL: check EV capacity
     PL->>PL: getEmptyEvSlot()
-    PL->>VF: create_vehicle(True, False, regnum, make, model, color, trace=_trace, vehicle_type=None)
-    VF->>Trace: _trace("Created ElectricCar...")
+    PL->>VF: create_vehicle(True, False, regnum, make, model, color, vehicle_type=None)
     VF->>EC: ElectricCar(regnum, make, model, color)
     EC-->>VF: electric car instance
     VF-->>PL: polymorphic Vehicle instance
     PL->>PL: evSlots[index] = instance
+    PL->>EventBus: publish(VehicleParkedEvent)
     PL-->>GUI: return allocated slot number
     GUI->>GUI: write_output("Allocated slot number: ...")
     GUI-->>User: Display output

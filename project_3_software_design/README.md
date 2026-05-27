@@ -22,7 +22,7 @@ python3 -m unittest discover tests -v
 project_3_software_design/
 ├── README.md
 ├── assets/
-│   └── Screenshot 2026-05-24 161746.png
+│   └── Screenshot 2026-05-27 145128.png
 ├── docs/
 │   ├── 07_Interview_Questions_for_Technical_Manager.md
 │   ├── implementations/
@@ -45,11 +45,13 @@ project_3_software_design/
 │   └── Vehicle.py             # Original vehicle classes
 ├── refactored_code/
 │   ├── AppGUI.py              # Tkinter GUI (Observer subscriber)
+│   ├── DomainEvents.py        # Strongly typed domain events
 │   ├── ElectricVehicle.py     # EV vehicle hierarchy
 │   ├── ParkingManager.py      # Core domain logic (Observer publisher)
+│   ├── PricingStrategy.py     # Strategy pattern pricing implementations
 │   ├── Vehicle.py             # Base vehicle hierarchy
 │   ├── VehicleFactory.py      # Factory Method pattern implementation
-│   └── test_ParkingManager.py # Unit tests (50 tests)
+│   └── tests/                 # Unit tests (55 tests)
 └── uml_diagrams/
     ├── original_class_diagram.png
     ├── original_sequence_diagram.png

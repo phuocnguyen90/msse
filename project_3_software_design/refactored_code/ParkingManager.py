@@ -80,7 +80,11 @@ class ParkingLot:
             if self.numOfOccupiedEvSlots < self.evCapacity:
                 slotid = self.getEmptyEvSlot()
                 if slotid != -1:
-                    vehicle = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color, vehicle_type=vehicle_type)
+                    try:
+                        vehicle = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color, vehicle_type=vehicle_type)
+                    except ValueError as e:
+                        self.publish(VehicleParkFailedEvent(str(e)))
+                        raise
                     self.evSlots[slotid] = vehicle
                     self.numOfOccupiedEvSlots += 1
                     self.publish(VehicleParkedEvent(vehicle, slotid + 1, True))
@@ -91,7 +95,11 @@ class ParkingLot:
             if self.numOfOccupiedSlots < self.capacity:
                 slotid = self.getEmptySlot()
                 if slotid != -1:
-                    vehicle = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color, vehicle_type=vehicle_type)
+                    try:
+                        vehicle = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color, vehicle_type=vehicle_type)
+                    except ValueError as e:
+                        self.publish(VehicleParkFailedEvent(str(e)))
+                        raise
                     self.slots[slotid] = vehicle
                     self.numOfOccupiedSlots += 1
                     self.publish(VehicleParkedEvent(vehicle, slotid + 1, False))

@@ -214,11 +214,15 @@ classDiagram
     class VehicleParkedEvent
     class VehicleDepartedEvent
     class VehicleParkFailedEvent
+    class VehicleDepartFailedEvent
+    class PricingStrategyChangedEvent
 
     DomainEvent <|-- LotInitializedEvent
     DomainEvent <|-- VehicleParkedEvent
     DomainEvent <|-- VehicleDepartedEvent
     DomainEvent <|-- VehicleParkFailedEvent
+    DomainEvent <|-- VehicleDepartFailedEvent
+    DomainEvent <|-- PricingStrategyChangedEvent
 
     ParkingLot ..> DomainEvent : publishes
 

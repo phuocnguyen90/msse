@@ -8,7 +8,12 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ParkingManager import ParkingLot
-from DomainEvents import LotInitializedEvent, VehicleParkedEvent, VehicleDepartedEvent
+from DomainEvents import (
+    LotInitializedEvent,
+    VehicleParkedEvent,
+    VehicleDepartedEvent,
+    VehicleParkFailedEvent,
+)
 
 
 class TestParkingEvents(unittest.TestCase):
@@ -61,6 +66,21 @@ class TestParkingEvents(unittest.TestCase):
         self.assertEqual(len(second_trace), 1)
         self.assertEqual(first_trace[0].level, 1)
         self.assertEqual(second_trace[0].level, 2)
+
+    def test_factory_validation_failure_publishes_event(self):
+        """Verify that failed factory validation still appears in the event stream."""
+        traced_events = []
+
+        lot = ParkingLot()
+        lot.add_event_observer(traced_events.append)
+        lot.createParkingLot(capacity=1, evcapacity=1, level=1)
+
+        with self.assertRaises(ValueError):
+            lot.park("EVBUS1", "BYD", "K9", "Blue", True, False, vehicle_type="bus")
+
+        failures = [event for event in traced_events if isinstance(event, VehicleParkFailedEvent)]
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Truck and bus", failures[0].reason)
 
 if __name__ == '__main__':
     unittest.main()
