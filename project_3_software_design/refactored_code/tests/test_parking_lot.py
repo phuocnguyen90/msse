@@ -1,147 +1,26 @@
+"""
+Unit tests for the core logic of the ParkingLot domain object.
+"""
+import sys
+import os
 import unittest
-from Vehicle import Vehicle, Car, Truck, Motorcycle, Bus
-from ElectricVehicle import ElectricVehicle, ElectricCar, ElectricBike
-from VehicleFactory import VehicleFactory
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from ParkingManager import ParkingLot
-from PricingStrategy import FlatRateStrategy, EVPremiumStrategy, VehicleTypeStrategy
-from DomainEvents import LotInitializedEvent, VehicleParkedEvent, VehicleDepartedEvent
-
-
-class TestVehicleFactory(unittest.TestCase):
-    def test_create_car(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=False, is_motorcycle=False, regnum="123", make="Toyota", model="Corolla", color="Blue")
-        self.assertIsInstance(vehicle, Car)
-        self.assertEqual(vehicle.type, "Car")
-
-    def test_create_truck(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=False, is_motorcycle=False, regnum="T01", make="Ford", model="F-150", color="Black")
-        self.assertIsInstance(vehicle, Car)
-        self.assertEqual(vehicle.type, "Car")
-
-    def test_create_motorcycle(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=False, is_motorcycle=True, regnum="456", make="Yamaha", model="R1", color="Red")
-        self.assertIsInstance(vehicle, Motorcycle)
-        self.assertEqual(vehicle.type, "Motorcycle")
-
-    def test_create_bus(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=False, is_motorcycle=False, regnum="B01", make="Volvo", model="7900", color="Yellow")
-        self.assertIsInstance(vehicle, Car)
-        self.assertEqual(vehicle.type, "Car")
-
-    def test_create_electric_car(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=True, is_motorcycle=False, regnum="789", make="Tesla", model="Model 3", color="White")
-        self.assertIsInstance(vehicle, ElectricCar)
-        self.assertEqual(vehicle.type, "Car")
-
-    def test_create_electric_bike(self):
-        vehicle = VehicleFactory.create_vehicle(is_ev=True, is_motorcycle=True, regnum="012", make="Zero", model="SR/F", color="Black")
-        self.assertIsInstance(vehicle, ElectricBike)
-        self.assertEqual(vehicle.type, "Motorcycle")
-
-    def test_create_truck(self):
-        vehicle = VehicleFactory.create_vehicle(
-            is_ev=False,
-            is_motorcycle=False,
-            regnum="TRK1",
-            make="Ford",
-            model="F-150",
-            color="Black",
-            vehicle_type="truck",
-        )
-        self.assertIsInstance(vehicle, Truck)
-        self.assertEqual(vehicle.type, "Truck")
-
-    def test_create_bus(self):
-        vehicle = VehicleFactory.create_vehicle(
-            is_ev=False,
-            is_motorcycle=False,
-            regnum="BUS1",
-            make="Blue Bird",
-            model="Vision",
-            color="Yellow",
-            vehicle_type="bus",
-        )
-        self.assertIsInstance(vehicle, Bus)
-        self.assertEqual(vehicle.type, "Bus")
-
-    def test_reject_unsupported_vehicle_type(self):
-        with self.assertRaises(ValueError):
-            VehicleFactory.create_vehicle(
-                is_ev=False,
-                is_motorcycle=False,
-                regnum="VAN1",
-                make="Ford",
-                model="Transit",
-                color="White",
-                vehicle_type="van",
-            )
-
-    def test_reject_ev_truck_or_bus(self):
-        with self.assertRaises(ValueError):
-            VehicleFactory.create_vehicle(
-                is_ev=True,
-                is_motorcycle=False,
-                regnum="ETRK1",
-                make="Rivian",
-                model="Commercial",
-                color="White",
-                vehicle_type="truck",
-            )
-
-
-class TestVehicleProperties(unittest.TestCase):
-    def test_base_vehicle_attributes(self):
-        v = Vehicle("ABC123", "Honda", "Civic", "Red")
-        self.assertEqual(v.regnum, "ABC123")
-        self.assertEqual(v.make, "Honda")
-        self.assertEqual(v.model, "Civic")
-        self.assertEqual(v.color, "Red")
-        self.assertEqual(v.type, "Vehicle")
-
-    def test_car_inheritance(self):
-        c = Car("DEF456", "Toyota", "Camry", "Blue")
-        self.assertIsInstance(c, Vehicle)
-        self.assertEqual(c.type, "Car")
-
-    def test_truck_inheritance(self):
-        t = Truck("TRK01", "Ford", "F-150", "Black")
-        self.assertIsInstance(t, Vehicle)
-        self.assertEqual(t.type, "Truck")
-
-    def test_motorcycle_inheritance(self):
-        m = Motorcycle("MOT01", "Yamaha", "R1", "Green")
-        self.assertIsInstance(m, Vehicle)
-        self.assertEqual(m.type, "Motorcycle")
-
-    def test_bus_inheritance(self):
-        b = Bus("BUS01", "Volvo", "7900", "Yellow")
-        self.assertIsInstance(b, Vehicle)
-        self.assertEqual(b.type, "Bus")
-
-    def test_electric_vehicle_charge(self):
-        ev = ElectricVehicle("EV01", "Tesla", "Model S", "White")
-        self.assertEqual(ev.getCharge(), 0)
-        ev.setCharge(85)
-        self.assertEqual(ev.getCharge(), 85)
-
-    def test_electric_car_inheritance(self):
-        ec = ElectricCar("EV02", "Tesla", "Model 3", "Red")
-        self.assertIsInstance(ec, ElectricVehicle)
-        self.assertIsInstance(ec, Vehicle)
-        self.assertEqual(ec.type, "Car")
-
-    def test_electric_bike_inheritance(self):
-        eb = ElectricBike("EV03", "Zero", "SR/F", "Black")
-        self.assertIsInstance(eb, ElectricVehicle)
-        self.assertIsInstance(eb, Vehicle)
-        self.assertEqual(eb.type, "Motorcycle")
+from Vehicle import Car, Truck, Motorcycle, Bus
+from ElectricVehicle import ElectricCar, ElectricBike
+from PricingStrategy import FlatRateStrategy
 
 
 class TestParkingLot(unittest.TestCase):
+    """Test suite for ParkingLot initialization, parking logic, departing logic, and queries."""
+
     def setUp(self):
         self.lot = ParkingLot()
 
     def test_parking_lot_instances_are_independent(self):
+        """Verify that different ParkingLot instances do not share state."""
         lot2 = ParkingLot()
         self.assertIsNot(self.lot, lot2)
 
@@ -157,23 +36,8 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(lot2.numOfOccupiedSlots, 0)
         self.assertEqual(lot2.numOfOccupiedEvSlots, 1)
 
-    def test_trace_observers_are_instance_scoped(self):
-        first_trace = []
-        second_trace = []
-        lot2 = ParkingLot()
-
-        self.lot.add_event_observer(first_trace.append)
-        lot2.add_event_observer(second_trace.append)
-
-        self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
-        lot2.createParkingLot(capacity=1, evcapacity=0, level=2)
-
-        self.assertEqual(len(first_trace), 1)
-        self.assertEqual(len(second_trace), 1)
-        self.assertEqual(first_trace[0].level, 1)
-        self.assertEqual(second_trace[0].level, 2)
-
     def test_create_parking_lot(self):
+        """Verify that createParkingLot initializes the lot capacity and level correctly."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.assertEqual(self.lot.capacity, 2)
         self.assertEqual(self.lot.evCapacity, 1)
@@ -182,22 +46,26 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(len(self.lot.evSlots), 1)
 
     def test_create_parking_lot_negative_capacity(self):
+        """Verify that attempting to create a lot with negative capacity raises a ValueError."""
         with self.assertRaises(ValueError) as context:
             self.lot.createParkingLot(capacity=-1, evcapacity=1, level=1)
         self.assertIn("cannot be negative", str(context.exception))
 
     def test_create_parking_lot_zero_capacity(self):
+        """Verify that attempting to create a lot with zero total capacity raises a ValueError."""
         with self.assertRaises(ValueError) as context:
             self.lot.createParkingLot(capacity=0, evcapacity=0, level=1)
         self.assertIn("greater than 0", str(context.exception))
 
     def test_create_parking_lot_already_initialized(self):
+        """Verify that attempting to re-initialize an already created lot raises a ValueError."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         with self.assertRaises(ValueError) as context:
             self.lot.createParkingLot(capacity=3, evcapacity=2, level=2)
         self.assertIn("already been initialized", str(context.exception))
 
     def test_park_regular_car(self):
+        """Verify that a regular car can be parked and decreases the available regular capacity."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         slot = self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.assertEqual(slot, 1)
@@ -205,12 +73,14 @@ class TestParkingLot(unittest.TestCase):
         self.assertIsInstance(self.lot.slots[0], Car)
 
     def test_park_motorcycle(self):
+        """Verify that a motorcycle can be parked in the regular capacity."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         slot = self.lot.park("MOT1", "Yamaha", "R1", "Blue", False, True)
         self.assertEqual(slot, 1)
         self.assertIsInstance(self.lot.slots[0], Motorcycle)
 
     def test_park_ev_car(self):
+        """Verify that an electric car can be parked and decreases the EV capacity."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         slot = self.lot.park("EV1", "Tesla", "Model Y", "Blue", True, False)
         self.assertEqual(slot, 1)
@@ -218,8 +88,8 @@ class TestParkingLot(unittest.TestCase):
         self.assertIsInstance(self.lot.evSlots[0], ElectricCar)
 
     def test_park_truck_and_bus(self):
+        """Verify that trucks and buses can be parked by specifying explicit vehicle types."""
         self.lot.createParkingLot(capacity=3, evcapacity=1, level=1)
-        # Park regular truck and bus through explicit vehicle_type
         truck_slot = self.lot.park("TRK1", "Ford", "F-150", "Black", False, False, vehicle_type="truck")
         bus_slot = self.lot.park("BUS1", "Blue Bird", "Vision", "Yellow", False, False, vehicle_type="bus")
         self.assertEqual(truck_slot, 1)
@@ -228,30 +98,35 @@ class TestParkingLot(unittest.TestCase):
         self.assertIsInstance(self.lot.slots[1], Bus)
 
     def test_park_ev_motorcycle(self):
+        """Verify that an electric motorcycle can be parked in the EV capacity."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         slot = self.lot.park("EVM1", "Zero", "SR/F", "Black", True, True)
         self.assertEqual(slot, 1)
         self.assertIsInstance(self.lot.evSlots[0], ElectricBike)
 
     def test_park_regular_full(self):
+        """Verify that attempting to park in a full regular lot returns -1."""
         self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         slot = self.lot.park("REG2", "Toyota", "Camry", "Blue", False, False)
         self.assertEqual(slot, -1)
 
     def test_park_ev_full(self):
+        """Verify that attempting to park in a full EV lot returns -1."""
         self.lot.createParkingLot(capacity=1, evcapacity=1, level=1)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
         slot = self.lot.park("EV2", "Tesla", "Model Y", "Red", True, False)
         self.assertEqual(slot, -1)
 
     def test_park_empty_regnum(self):
+        """Verify that parking a vehicle without a registration number raises a ValueError."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         with self.assertRaises(ValueError) as context:
             self.lot.park("", "Honda", "Civic", "Red", False, False)
         self.assertIn("cannot be empty", str(context.exception))
 
     def test_park_duplicate_regnum(self):
+        """Verify that parking a vehicle with a duplicate registration number raises a ValueError."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("DUP1", "Honda", "Civic", "Red", False, False)
         with self.assertRaises(ValueError) as context:
@@ -259,6 +134,7 @@ class TestParkingLot(unittest.TestCase):
         self.assertIn("already parked", str(context.exception))
 
     def test_leave_regular(self):
+        """Verify that a regular vehicle can depart, restoring capacity and calculating fees."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         success, fee = self.lot.leave(1, False)
@@ -268,35 +144,41 @@ class TestParkingLot(unittest.TestCase):
         self.assertIsNone(self.lot.slots[0])
 
     def test_leave_ev(self):
+        """Verify that an EV vehicle can depart, restoring EV capacity and calculating premium fees."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
         success, fee = self.lot.leave(1, True)
         self.assertTrue(success)
-        self.assertEqual(fee, 12.0) # default VehicleTypeStrategy (10.0 base + 2.0 ev surcharge)
+        self.assertEqual(fee, 12.0)
         self.assertEqual(self.lot.numOfOccupiedEvSlots, 0)
         self.assertIsNone(self.lot.evSlots[0])
 
     def test_leave_negative_slot(self):
+        """Verify that leaving an invalid negative slot index returns False."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         success, fee = self.lot.leave(-1, False)
         self.assertFalse(success)
 
     def test_leave_out_of_bounds(self):
+        """Verify that leaving an out-of-bounds slot index returns False."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         success, fee = self.lot.leave(10, False)
         self.assertFalse(success)
 
     def test_leave_already_empty(self):
+        """Verify that attempting to leave an already empty slot returns False."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         success, fee = self.lot.leave(1, False)
         self.assertFalse(success)
 
     def test_leave_ev_already_empty(self):
+        """Verify that attempting to leave an already empty EV slot returns False."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         success, fee = self.lot.leave(1, True)
         self.assertFalse(success)
 
     def test_status_empty(self):
+        """Verify that calling status() on an empty lot generates a valid report skeleton."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         status = self.lot.status()
         self.assertIn("Vehicles", status)
@@ -304,6 +186,7 @@ class TestParkingLot(unittest.TestCase):
         self.assertNotIn("REG1", status)
 
     def test_status_mixed(self):
+        """Verify that calling status() correctly includes mixed vehicles."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
@@ -314,12 +197,14 @@ class TestParkingLot(unittest.TestCase):
         self.assertIn("Tesla", status)
 
     def test_charge_status_empty(self):
+        """Verify that calling chargeStatus() on an empty EV lot works without errors."""
         self.lot.createParkingLot(capacity=0, evcapacity=1, level=1)
         status = self.lot.chargeStatus()
         self.assertIn("Electric Vehicle Charge Levels", status)
         self.assertNotIn("EV1", status)
 
     def test_charge_status_with_values(self):
+        """Verify that calling chargeStatus() correctly displays specific EV charge values."""
         self.lot.createParkingLot(capacity=0, evcapacity=2, level=1)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
         self.lot.park("EV2", "Tesla", "Model Y", "Red", True, False)
@@ -332,6 +217,7 @@ class TestParkingLot(unittest.TestCase):
         self.assertIn("42", status)
 
     def test_get_reg_num_from_color(self):
+        """Verify that fetching registration numbers by color returns correct lists."""
         self.lot.createParkingLot(capacity=3, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.park("REG2", "Toyota", "Camry", "Red", False, False)
@@ -340,12 +226,14 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(sorted(red_regs), ["REG1", "REG2"])
 
     def test_get_reg_num_from_color_not_found(self):
+        """Verify that fetching registration numbers by color returns an empty list if not found."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         result = self.lot.getRegNumFromColor("Green", False)
         self.assertEqual(result, [])
 
     def test_get_slot_num_from_reg_num(self):
+        """Verify that fetching a slot number by registration string returns the correct 1-based index."""
         self.lot.createParkingLot(capacity=3, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.park("EV1", "Tesla", "Model 3", "White", True, False)
@@ -355,11 +243,13 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(ev_slot, 1)
 
     def test_get_slot_num_from_reg_num_not_found(self):
+        """Verify that fetching a slot number by an unknown registration returns -1."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         slot = self.lot.getSlotNumFromRegNum("UNKNOWN", False)
         self.assertEqual(slot, -1)
 
     def test_get_slot_num_from_color(self):
+        """Verify that fetching slot numbers by color returns correct matches."""
         self.lot.createParkingLot(capacity=3, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.park("REG2", "Toyota", "Camry", "Red", False, False)
@@ -368,37 +258,13 @@ class TestParkingLot(unittest.TestCase):
         self.assertEqual(sorted(red_slots), ["1", "2"])
 
     def test_get_slot_num_from_color_not_found(self):
+        """Verify that fetching slot numbers by a missing color returns an empty list."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         result = self.lot.getSlotNumFromColor("Purple", False)
         self.assertEqual(result, [])
 
-    def test_tracing_create_and_park(self):
-        traced_events = []
-        def mock_event(event):
-            traced_events.append(event)
-
-        lot = ParkingLot()
-        lot.add_event_observer(mock_event)
-        lot.createParkingLot(capacity=1, evcapacity=0, level=1)
-        lot.park("REG1", "Honda", "Civic", "Red", False, False)
-
-        self.assertGreater(len(traced_events), 0)
-        self.assertTrue(any(isinstance(e, LotInitializedEvent) for e in traced_events))
-        self.assertTrue(any(isinstance(e, VehicleParkedEvent) for e in traced_events))
-
-    def test_tracing_leave(self):
-        traced_events = []
-        def mock_event(event):
-            traced_events.append(event)
-
-        self.lot.add_event_observer(mock_event)
-        self.lot.createParkingLot(capacity=1, evcapacity=0, level=1)
-        self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
-        self.lot.leave(1, False)
-
-        self.assertTrue(any(isinstance(e, VehicleDepartedEvent) for e in traced_events))
-
     def test_get_slot_num_from_make_and_model(self):
+        """Verify that fetching slot numbers by Make and Model returns the correct string indexes."""
         self.lot.createParkingLot(capacity=2, evcapacity=1, level=1)
         self.lot.park("REG1", "Honda", "Civic", "Red", False, False)
         self.lot.park("EV1", "Tesla", "Model S", "White", True, False)
@@ -415,37 +281,8 @@ class TestParkingLot(unittest.TestCase):
         model_s_slots = self.lot.getSlotNumFromModel("Model S", True)
         self.assertEqual(model_s_slots, ["1"])
 
-
-class TestPricingStrategy(unittest.TestCase):
-    def test_flat_rate_strategy(self):
-        strategy = FlatRateStrategy(rate=20.0)
-        car = Car("123", "Make", "Model", "Color")
-        self.assertEqual(strategy.calculate_fee(car), 20.0)
-
-    def test_ev_premium_strategy(self):
-        strategy = EVPremiumStrategy(base_rate=10.0, ev_surcharge=5.0)
-        car = Car("123", "Make", "Model", "Color")
-        ev = ElectricCar("456", "Make", "Model", "Color")
-        self.assertEqual(strategy.calculate_fee(car), 10.0)
-        self.assertEqual(strategy.calculate_fee(ev), 15.0)
-
-    def test_vehicle_type_strategy(self):
-        strategy = VehicleTypeStrategy(motorcycle_rate=5.0, car_rate=10.0, truck_bus_rate=15.0, ev_surcharge=2.0)
-        car = Car("1", "Make", "Model", "Color")
-        moto = Motorcycle("2", "Make", "Model", "Color")
-        truck = Truck("3", "Make", "Model", "Color")
-        bus = Bus("4", "Make", "Model", "Color")
-        ev_car = ElectricCar("5", "Make", "Model", "Color")
-        ev_bike = ElectricBike("6", "Make", "Model", "Color")
-
-        self.assertEqual(strategy.calculate_fee(car), 10.0)
-        self.assertEqual(strategy.calculate_fee(moto), 5.0)
-        self.assertEqual(strategy.calculate_fee(truck), 15.0)
-        self.assertEqual(strategy.calculate_fee(bus), 15.0)
-        self.assertEqual(strategy.calculate_fee(ev_car), 12.0)
-        self.assertEqual(strategy.calculate_fee(ev_bike), 7.0)
-
     def test_lot_with_custom_strategy(self):
+        """Verify that the lot properly integrates with custom PricingStrategy implementations."""
         lot = ParkingLot()
         lot.set_pricing_strategy(FlatRateStrategy(rate=42.0))
         lot.createParkingLot(capacity=2, evcapacity=0, level=1)
@@ -453,7 +290,6 @@ class TestPricingStrategy(unittest.TestCase):
         success, fee = lot.leave(1, False)
         self.assertTrue(success)
         self.assertEqual(fee, 42.0)
-
 
 if __name__ == '__main__':
     unittest.main()
