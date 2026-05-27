@@ -3,34 +3,28 @@ from VehicleFactory import VehicleFactory
 
 
 class ParkingLot:
-    _instance = None
-    _trace_callback = None
+    def __init__(self):
+        self.capacity = 0
+        self.evCapacity = 0
+        self.level = 0
+        self.numOfOccupiedSlots = 0
+        self.numOfOccupiedEvSlots = 0
+        self.slots = []
+        self.evSlots = []
+        self._trace_observers = []
 
-    def __new__(cls, *args, **kwargs):
-        cls._trace("Singleton", "__new__() called — checking for existing instance")
-        if not cls._instance:
-            cls._instance = super(ParkingLot, cls).__new__(cls, *args, **kwargs)
-            cls._instance.capacity = 0
-            cls._instance.evCapacity = 0
-            cls._instance.level = 0
-            cls._instance.numOfOccupiedSlots = 0
-            cls._instance.numOfOccupiedEvSlots = 0
-            cls._instance.slots = []
-            cls._instance.evSlots = []
-            cls._trace("Singleton", "NEW instance created and initialized")
-        else:
-            cls._trace("Singleton", "EXISTING instance returned (id={})".format(id(cls._instance)))
-        return cls._instance
+    def add_trace_observer(self, observer):
+        if observer not in self._trace_observers:
+            self._trace_observers.append(observer)
 
-    @classmethod
-    def set_trace_callback(cls, callback):
-        cls._trace_callback = callback
+    def remove_trace_observer(self, observer):
+        if observer in self._trace_observers:
+            self._trace_observers.remove(observer)
 
-    @classmethod
-    def _trace(cls, component, message):
-        if cls._trace_callback:
+    def _trace(self, component, message):
+        for observer in self._trace_observers:
             timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-            cls._trace_callback(f"[{timestamp}] [{component}] {message}")
+            observer(f"[{timestamp}] [{component}] {message}")
 
     def createParkingLot(self, capacity, evcapacity, level):
         self._trace("ParkingLot", f"createParkingLot(capacity={capacity}, evcapacity={evcapacity}, level={level})")
@@ -73,8 +67,8 @@ class ParkingLot:
             self._trace("ParkingLot", "  → No empty EV slots available")
             return -1
 
-    def park(self, regnum, make, model, color, ev, motor):
-        self._trace("ParkingLot", f"park(regnum={regnum}, make={make}, model={model}, color={color}, ev={ev}, motor={motor})")
+    def park(self, regnum, make, model, color, ev, motor, vehicle_type=None):
+        self._trace("ParkingLot", f"park(regnum={regnum}, make={make}, model={model}, color={color}, ev={ev}, motor={motor}, vehicle_type={vehicle_type})")
         
         if not regnum or not str(regnum).strip():
             self._trace("ParkingLot", "  → Error: Missing registration number")
@@ -88,8 +82,8 @@ class ParkingLot:
             if self.numOfOccupiedEvSlots < self.evCapacity:
                 slotid = self.getEmptyEvSlot()
                 if slotid != -1:
-                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=True, is_motorcycle={motor})")
-                    self.evSlots[slotid] = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color, trace=self._trace)
+                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=True, is_motorcycle={motor}, vehicle_type={vehicle_type})")
+                    self.evSlots[slotid] = VehicleFactory.create_vehicle(True, motor, regnum, make, model, color, trace=self._trace, vehicle_type=vehicle_type)
                     self.numOfOccupiedEvSlots += 1
                     self._trace("ParkingLot", f"  → Vehicle stored in EV slot index {slotid}. Allocated slot number: {slotid + 1}")
                     return slotid + 1
@@ -99,8 +93,8 @@ class ParkingLot:
             if self.numOfOccupiedSlots < self.capacity:
                 slotid = self.getEmptySlot()
                 if slotid != -1:
-                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=False, is_motorcycle={motor})")
-                    self.slots[slotid] = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color, trace=self._trace)
+                    self._trace("ParkingLot", f"  → Delegating to VehicleFactory.create_vehicle(is_ev=False, is_motorcycle={motor}, vehicle_type={vehicle_type})")
+                    self.slots[slotid] = VehicleFactory.create_vehicle(False, motor, regnum, make, model, color, trace=self._trace, vehicle_type=vehicle_type)
                     self.numOfOccupiedSlots += 1
                     self._trace("ParkingLot", f"  → Vehicle stored in regular slot index {slotid}. Allocated slot number: {slotid + 1}")
                     return slotid + 1
@@ -176,5 +170,19 @@ class ParkingLot:
         self._trace("ParkingLot", f"getSlotNumFromColor(color={color}, is_ev={is_ev})")
         collection = self.evSlots if is_ev else self.slots
         result = [str(i + 1) for i, v in enumerate(collection) if v is not None and v.color == color]
+        self._trace("ParkingLot", f"  → Found {len(result)} match(es): {result}")
+        return result
+
+    def getSlotNumFromMake(self, make, is_ev):
+        self._trace("ParkingLot", f"getSlotNumFromMake(make={make}, is_ev={is_ev})")
+        collection = self.evSlots if is_ev else self.slots
+        result = [str(i + 1) for i, v in enumerate(collection) if v is not None and v.make == make]
+        self._trace("ParkingLot", f"  → Found {len(result)} match(es): {result}")
+        return result
+
+    def getSlotNumFromModel(self, model, is_ev):
+        self._trace("ParkingLot", f"getSlotNumFromModel(model={model}, is_ev={is_ev})")
+        collection = self.evSlots if is_ev else self.slots
+        result = [str(i + 1) for i, v in enumerate(collection) if v is not None and v.model == model]
         self._trace("ParkingLot", f"  → Found {len(result)} match(es): {result}")
         return result

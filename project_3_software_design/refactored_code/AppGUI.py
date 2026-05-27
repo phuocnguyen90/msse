@@ -29,8 +29,8 @@ class AppGUI:
         self._setup_layout()
         self.create_widgets()
 
-        ParkingLot.set_trace_callback(self._append_trace)
         self.parkinglot = ParkingLot()
+        self.parkinglot.add_trace_observer(self._append_trace)
 
     def _setup_layout(self):
         tk.Label(self.root, text="Parking Lot Manager — Live Logic Trace Demonstration",

@@ -1,26 +1,36 @@
-from Vehicle import Car, Motorcycle
+from Vehicle import Bus, Car, Motorcycle, Truck
 from ElectricVehicle import ElectricCar, ElectricBike
 
 
 class VehicleFactory:
     @staticmethod
-    def create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, trace=None):
-        vehicle_type = "Unknown"
-        if is_ev:
-            if is_motorcycle:
-                vehicle_type = "ElectricBike"
-                vehicle = ElectricBike(regnum, make, model, color)
-            else:
-                vehicle_type = "ElectricCar"
-                vehicle = ElectricCar(regnum, make, model, color)
+    def create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, trace=None, vehicle_type=None):
+        normalized_type = vehicle_type.lower() if vehicle_type else None
+
+        if normalized_type in ("truck", "bus") and is_ev:
+            raise ValueError("Truck and bus are only supported as regular vehicles in this prototype.")
+
+        vehicle_classes = {
+            "car": Car,
+            "motorcycle": Motorcycle,
+            "truck": Truck,
+            "bus": Bus,
+            "electric_car": ElectricCar,
+            "electric_bike": ElectricBike,
+            "electric_motorcycle": ElectricBike,
+        }
+
+        if normalized_type:
+            if normalized_type not in vehicle_classes:
+                raise ValueError(f"Unsupported vehicle type: {vehicle_type}")
+            vehicle_class = vehicle_classes[normalized_type]
+        elif is_ev:
+            vehicle_class = ElectricBike if is_motorcycle else ElectricCar
         else:
-            if is_motorcycle:
-                vehicle_type = "Motorcycle"
-                vehicle = Motorcycle(regnum, make, model, color)
-            else:
-                vehicle_type = "Car"
-                vehicle = Car(regnum, make, model, color)
+            vehicle_class = Motorcycle if is_motorcycle else Car
+
+        vehicle = vehicle_class(regnum, make, model, color)
 
         if trace:
-            trace("VehicleFactory", f"  → Created {vehicle_type}(regnum={regnum}, make={make}, model={model}, color={color})")
+            trace("VehicleFactory", f"  → Created {vehicle_class.__name__}(regnum={regnum}, make={make}, model={model}, color={color})")
         return vehicle

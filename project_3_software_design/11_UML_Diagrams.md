@@ -103,25 +103,26 @@ sequenceDiagram
 ## Part 2: Re-Designed Codebase
 
 ### 1. Structural Diagram (Class Diagram)
-This diagram illustrates the refactored architecture. The `AppGUI` is cleanly separated from the `ParkingLot`. The `ParkingLot` uses the **Singleton** pattern to ensure only one instance exists. Furthermore, the `ParkingLot` no longer knows about concrete vehicle implementations; it delegates instantiation to the `VehicleFactory` (**Factory Method** pattern). The inheritance chain for Electric Vehicles has been corrected.
+This diagram illustrates the refactored architecture. The `AppGUI` is cleanly separated from the `ParkingLot`. The `ParkingLot` supports the **Observer** pattern for trace/output notifications, so each facility can have independent state while UI or logging components subscribe to events. Furthermore, the `ParkingLot` no longer knows about concrete vehicle implementations; it delegates instantiation to the `VehicleFactory` (**Factory Method** pattern). The inheritance chain for Electric Vehicles has been corrected.
 
 ```mermaid
 classDiagram
     class ParkingLot {
-        -ParkingLot _instance$
         +int capacity
         +int evCapacity
         +int level
         +list slots
         +list evSlots
-        +__new__()$
+        -list trace_observers
         +createParkingLot(...)
-        +park(regnum, make, model, color, ev, motor)
+        +park(regnum, make, model, color, ev, motor, vehicle_type)
         +leave(slotid, ev)
+        +add_trace_observer(observer)
+        +remove_trace_observer(observer)
     }
     
     class VehicleFactory {
-        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color)$ Vehicle
+        +create_vehicle(is_ev, is_motorcycle, regnum, make, model, color, vehicle_type)$ Vehicle
     }
     
     class Vehicle {
@@ -159,7 +160,7 @@ classDiagram
     VehicleFactory ..> ElectricCar : instantiates
     VehicleFactory ..> ElectricBike : instantiates
     
-    ParkingLot "1" *-- "*" Vehicle : stores centrally
+    ParkingLot "1" *-- "*" Vehicle : stores in slots
     
     class AppGUI {
         -ParkingLot parkinglot
@@ -169,7 +170,8 @@ classDiagram
         +parkCar()
         +removeCar()
     }
-    AppGUI --> ParkingLot : uses Singleton
+    AppGUI --> ParkingLot : uses
+    ParkingLot ..> AppGUI : notifies trace observer
 ```
 
 ### 2. Behavioral Diagram (Sequence Diagram - Parking a Car)
@@ -179,12 +181,12 @@ This sequence diagram shows the refactored flow. The GUI now interacts with the 
 sequenceDiagram
     actor User
     participant GUI as AppGUI
-    participant PL as ParkingLot (Singleton)
+    participant PL as ParkingLot
     participant VF as VehicleFactory
     participant EC as ElectricCar
     
     User->>GUI: Click "Park Car" (is_ev=1, motor=0)
-    GUI->>PL: park(regnum, make, model, color, 1, 0)
+    GUI->>PL: park(regnum, make, model, color, 1, 0, vehicle_type=None)
     PL->>PL: check capacity (numOfOccupiedEvSlots < evCapacity)
     PL->>PL: getEmptyEvSlot()
     PL->>VF: create_vehicle(is_ev=True, is_motorcycle=False, ...)

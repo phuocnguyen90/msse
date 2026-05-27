@@ -87,31 +87,58 @@ flowchart TD
 
 ## 4. Basic Domain Models (Entities, Value Objects, Aggregates)
 
-Here is a preliminary structural model for the two core contexts.
+Here is a preliminary structural model for the core contexts and the supporting contexts that interact directly with parking and EV charging.
 
 ### Access & Parking Domain Model
 * **Aggregate Root: `ParkingSession`**
-    * **Properties:** SessionID, EntryTime, ExitTime, Status (Active, Completed)
-    * **Value Objects:** `Ticket` (or LicensePlate ID), `Duration`
+    * **Properties:** SessionID, FacilityID, EntryTime, ExitTime, Status (Active, PaymentPending, Completed, Cancelled), SessionType (Transient, Reservation, MonthlySubscriber), OfflineCaptured flag
+    * **Entities:** `Ticket`, `VehicleSnapshot`, `AccessDecision`
+    * **Value Objects:** `LicensePlate`, `Duration`, `EntryCredential`, `ParkingRateSnapshot`
+    * **Invariants:** A session must have one entry event before exit; an exit gate cannot open until payment/subscription validation succeeds; duplicate active sessions for the same license plate and facility are rejected.
+* **Aggregate Root: `FacilityInventory`**
+    * **Properties:** FacilityID, TotalCapacity, AvailableCapacity, ReservedCapacityBuffer, OperatingMode (Online, Offline, Degraded)
+    * **Entities:** `ParkingSpot`, `Gate`, `FacilityRuleOverride`
+    * **Value Objects:** `CapacityCount`, `SpotType` (Regular, EV, Accessible, Reserved), `GateStatus`
+    * **Invariants:** Reservations have priority over subscribers, and subscribers have priority over drive-up traffic during degraded/offline operation; drive-up entries must not consume the reserved capacity buffer.
 * **Entity: `Facility`**
-    * **Properties:** FacilityID, TotalCapacity, AvailableCapacity
-* **Entity: `Gate`**
-    * **Properties:** GateID, GateType (Entry/Exit), Status (Open/Closed/Fault)
+    * **Properties:** FacilityID, City, Address, LocalTimezone, AccessMechanism (BoomGate, LPR, Hybrid)
 
 ### EV Charging Domain Model
 * **Aggregate Root: `ChargingSession`**
-    * **Properties:** ChargingSessionID, StartTime, EndTime, Status (Preparing, Charging, Suspended, Finishing)
-    * **Value Objects:** `EnergyConsumed` (kWh), `IdleDuration` (Minutes)
-* **Entity: `Charger`**
-    * **Properties:** ChargerID, Vendor, MaxOutput, Protocol (e.g., OCPP)
+    * **Properties:** ChargingSessionID, FacilityID, ParkingSessionID, StartTime, EndTime, Status (Preparing, Charging, Suspended, Finishing, Completed, Faulted), VendorSessionID
+    * **Entities:** `ChargingMeterReading`, `IdleFeeAssessment`
+    * **Value Objects:** `EnergyConsumed` (kWh), `IdleDuration` (Minutes), `ConnectorID`, `ChargingTariffSnapshot`
+    * **Invariants:** A charging session must be linked to a designated EV bay; idle fees start only after the configured grace period; interrupted or faulted sessions keep enough meter data for adjustment and settlement.
+* **Aggregate Root: `ChargerAsset`**
+    * **Properties:** ChargerID, FacilityID, Vendor, Protocol (OCPP or VendorAPI), MaxOutput, Status (Available, Occupied, Preparing, Charging, Suspended, Finishing, Faulted, Offline)
+    * **Entities:** `Connector`, `MaintenanceState`
+    * **Value Objects:** `PowerRating`, `OcppEndpoint`, `HeartbeatTimestamp`
+    * **Invariants:** A charger can expose one or more connectors, but each connector can serve only one active charging session at a time.
 * **Entity: `EVBay`**
-    * **Properties:** BayID, Location, IsOccupied
+    * **Properties:** BayID, FacilityID, LinkedChargerID, LinkedConnectorID, Location, OccupancyStatus, ReservationEligibility
+    * **Rule:** Dual-port chargers may map to two adjacent EV bays; charger state and physical bay occupancy are tracked separately.
 
-### Billing & Payment Domain Model (Intersection)
+### Reservation & Inventory Domain Model
+* **Aggregate Root: `Reservation`**
+    * **Properties:** ReservationID, CustomerID, FacilityID, ReservedWindow, SpotTypeRequested, Status (Requested, Confirmed, Honored, NoShow, Cancelled)
+    * **Value Objects:** `ReservationPriority`, `CapacityHold`, `ReservationWindow`
+    * **Invariants:** Central reservations can continue while a facility is offline, but capacity buffers limit overbooking; conflicts after reconnection are resolved by priority: reservations, then subscriptions, then drive-up traffic.
+
+### Billing, Pricing & Settlement Domain Model
 * **Aggregate Root: `UnifiedInvoice`**
-    * **Properties:** InvoiceID, CustomerID, TotalAmount, Status (Pending, Paid, Failed)
-    * **Entities:** `PaymentTransaction`
-    * **Value Objects:** `ChargeLineItem` (e.g., Parking Fee, Charging Fee, Idle Fee), `TariffRule`
+    * **Properties:** InvoiceID, CustomerID, ParkingSessionID, ChargingSessionID, TotalAmount, Status (Pending, Paid, Failed, Adjusted)
+    * **Entities:** `PaymentTransaction`, `SettlementAllocation`
+    * **Value Objects:** `ChargeLineItem` (Parking Fee, Charging Fee, Idle Fee), `TariffRule`, `Money`, `TaxBreakdown`
+    * **Invariants:** Parking and charging may be presented as one receipt while preserving separate line items for tax, refunds, and settlement.
+* **Aggregate Root: `TariffPolicy`**
+    * **Properties:** PolicyID, FacilityID, EffectivePeriod, Source (Corporate, FacilityOverride, Regulatory)
+    * **Value Objects:** `ParkingRate`, `ChargingRate`, `IdleFeeRule`, `OverrideLimit`
+    * **Rule:** Corporate operations own the default source of truth, while facility managers can apply controlled local overrides within approved limits.
+* **Aggregate Root: `SettlementBatch`**
+    * **Properties:** BatchID, SettlementPeriod, Status, VendorID, FacilityID
+    * **Entities:** `LedgerEntry`, `VendorInvoiceMatch`, `Adjustment`
+    * **Value Objects:** `RevenueShareRule`, `GrossAmount`, `NetAmount`
+    * **Rule:** Third-party charger revenue, landlord shares, idle fees, refunds, and failed-session adjustments must be reconcilable from session-level records.
 
 > [!NOTE]
 > The `UnifiedInvoice` acts as the financial sink where the `ParkingSession` and `ChargingSession` are combined to present a single payment request to the driver, satisfying the business requirement for a unified customer experience while preserving separate tracking for settlement.
