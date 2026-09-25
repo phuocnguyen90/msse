@@ -4,3 +4,6 @@
 [submodule "clean-test-course"]
 	path = clean-test-course
 	url = https://github.com/phuocnguyen90/clean-test-course
+[submodule "project_5_llm_app"]
+	path = project_5_llm_app
+	url = https://github.com/phuocnguyen90/msse_rag_app.git
